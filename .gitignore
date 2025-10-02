@@ -1,0 +1,15 @@
+Data_input/
+Data_output/
+Data_predict/
+runs/
+logs/
+.cache/
+__pycache__/
+*.pyc
+.huggingface/
+.cache/huggingface/
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+.ipynb_checkpoints/
