@@ -4,13 +4,23 @@
 from pathlib import Path
 import re, random
 import time
+import shutil
 from datasets import Dataset, DatasetDict
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from trl import SFTTrainer, SFTConfig
 
+# === CONFIGURATION MODÈLE ===
+MODEL_SHORT = "Qwen-0.5B"                    # Pour runs/
+PREDICT_DIR_NAME = "Qwen-0.5B_predict"       # Pour Data_predict/
+
 INPUT_DIR  = Path("Data_input")
 OUTPUT_DIR = Path("Data_output")
-PRED_DIR   = Path("Data_predict"); PRED_DIR.mkdir(parents=True, exist_ok=True)
+PRED_DIR   = Path("Data_predict") / PREDICT_DIR_NAME
+
+# Nettoyer complètement le dossier de prédiction du modèle à chaque run
+if PRED_DIR.exists():
+    shutil.rmtree(PRED_DIR)
+PRED_DIR.mkdir(parents=True, exist_ok=True)
 
 # start timer
 _start_time = time.time()
@@ -60,7 +70,7 @@ if tok.pad_token is None: tok.pad_token = tok.eos_token
 model = AutoModelForCausalLM.from_pretrained(MODEL_ID, device_map="auto")
 
 cfg = SFTConfig(
-    output_dir="runs/local_train",
+    output_dir=f"runs/{MODEL_SHORT}",
     num_train_epochs=1,
     per_device_train_batch_size=1,
     logging_steps=1,
@@ -80,9 +90,9 @@ trainer = SFTTrainer(
     formatting_func=None
 )
 
-print(f"Train {len(train_pairs)} / Val {len(val_pairs)}")
+print(f"🚀 Training {MODEL_SHORT} - Train {len(train_pairs)} / Val {len(val_pairs)}")
 trainer.train()
-trainer.save_model("runs/local_test")  # ok de garder si tu veux la trace sur disque
+trainer.save_model(f"runs/{MODEL_SHORT}/final_model")
 
 # --- génération : réutiliser le modèle en mémoire pour rester sur GPU ---
 gen = pipeline(
@@ -97,8 +107,8 @@ for p in pairs:
     out = gen(prompt, max_new_tokens=200, do_sample=False)[0]["generated_text"]
     (PRED_DIR / f"{p['cid']}_pred.txt").write_text(out, encoding="utf-8")
 
-print(f"Sorties générées dans {PRED_DIR}")
+print(f"✅ {MODEL_SHORT} - Predictions saved in {PRED_DIR}")
 
 # affiche le temps d'exécution total
 _elapsed = time.time() - _start_time
-print(f"Temps d'exécution (wall-clock): {_elapsed:.2f} s")
+print(f"⏱️  Execution time: {_elapsed:.2f}s")
