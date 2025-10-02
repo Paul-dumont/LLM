@@ -1,15 +1,42 @@
+# Données et sorties
 Data_input/
 Data_output/
 Data_predict/
 runs/
 logs/
+
+# Cache et fichiers temporaires
 .cache/
 __pycache__/
 *.pyc
 .huggingface/
 .cache/huggingface/
+*.tmp
+*.log
+.DS_Store
+
+# Modèles et checkpoints
 *.safetensors
 *.bin
 *.pt
 *.ckpt
+*.pth
+
+# Jupyter
 .ipynb_checkpoints/
+*.ipynb
+
+# Environnement
+.env
+.venv/
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
