@@ -79,6 +79,9 @@ tok = AutoTokenizer.from_pretrained(MODEL_ID, use_fast=True)
 if tok.pad_token is None:
     tok.pad_token = tok.eos_token
 
+# Fix padding side for SFTTrainer
+tok.padding_side = 'right'
+
 # Set chat template for Llama-2 models if not present
 if tok.chat_template is None:
     tok.chat_template = "{% for message in messages %}{% if message['role'] == 'system' %}{{ message['content'] }}{% elif message['role'] == 'user' %}### Human: {{ message['content'] }}{% elif message['role'] == 'assistant' %}### Assistant: {{ message['content'] }}{% endif %}{% if not loop.last %}{{ '\n\n' }}{% endif %}{% endfor %}{% if add_generation_prompt %}{{ '\n\n### Assistant: ' }}{% endif %}"
@@ -130,7 +133,7 @@ cfg = SFTConfig(
     per_device_train_batch_size=BATCH_SIZE,
     gradient_accumulation_steps=GRAD_ACCUM,
     logging_steps=10,
-    evaluation_strategy="steps",
+    eval_strategy="steps",  # Fixed: evaluation_strategy -> eval_strategy
     eval_steps=max(20, len(train_ds)//10),  # une éval ~10x/epoch
     save_strategy="epoch",                   # on sauvegarde à la fin de chaque epoch
     save_total_limit=1,
@@ -144,7 +147,7 @@ cfg = SFTConfig(
     gradient_checkpointing=True,
     packing=False,
     dataset_text_field="text",
-    peft_config=peft_cfg,
+    # peft_config moved to SFTTrainer in new TRL API
     report_to=[],
 )
 
@@ -154,6 +157,7 @@ trainer = SFTTrainer(
     train_dataset=dset["train"],
     eval_dataset=dset["validation"],
     tokenizer=tok,
+    peft_config=peft_cfg,  # Fixed: peft_config goes here now
 )
 
 print(">> TRAIN START")
@@ -178,8 +182,8 @@ merged.save_pretrained(MERGED_OUT, safe_serialization=True)
 tok.save_pretrained(MERGED_OUT)
 print(f">> MERGED MODEL saved to: {MERGED_OUT}")
 
-# --- Génération: prédire TOUTES les notes (train+val) avec le modèle fusionné
-print(">> GENERATION on all notes (merged model)...")
+# --- MODE TEST: Générer seulement 10 prédictions pour validation
+print(">> TEST MODE: Generating 10 predictions for format validation...")
 gen = pipeline(
     "text-generation",
     model=merged,
@@ -187,7 +191,11 @@ gen = pipeline(
     return_full_text=False
 )
 
-for p in pairs:
+# Prendre les 10 premiers exemples pour test complet
+test_pairs = pairs[:10]
+print(f"🔬 Testing on {len(test_pairs)} examples...")
+
+for p in test_pairs:
     gen_messages = [
         {"role": "system", "content": INSTRUCTION},
         {"role": "user",   "content": p["note_only"]},

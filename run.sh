@@ -2,7 +2,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=24g
-#SBATCH -t 00:20:00
+#SBATCH -t 00:30:00
 #SBATCH -p l40-gpu
 #SBATCH --qos=gpu_access
 #SBATCH --gres=gpu:1
@@ -65,6 +65,16 @@ if torch.cuda.is_available():
 PY
 
 ############################
-# 5) Lancer ton script
+# 5) Lancer le script spécifique
 ############################
-python quick_run.py
+SCRIPT_FILE="scripts/${MODEL:-Qwen-0.5B}.py"
+echo "🚀 Launching: $SCRIPT_FILE"
+
+if [[ -f "$SCRIPT_FILE" ]]; then
+    python "$SCRIPT_FILE"
+else
+    echo "❌ Script not found: $SCRIPT_FILE"
+    echo "Available scripts:"
+    ls scripts/*.py 2>/dev/null || echo "No scripts found in scripts/"
+    exit 1
+fi
