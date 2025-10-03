@@ -11,7 +11,7 @@ from peft import LoraConfig, PeftModel
 
 # -------------------- PIPELINE TEST - Paramètres minimaux --------------------
 MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
-MODEL_SHORT = "Qwen2.5-7B-PIPELINE-TEST"
+MODEL_SHORT = "Qwen2.5-7B-quick"
 MAX_SEQ_LEN = 512
 NUM_EPOCHS = 1
 BATCH_SIZE = 1
@@ -22,20 +22,31 @@ WARMUP_RATIO = 0.1
 
 # Contrôles rapides par variables d'environnement
 MAX_INPUTS = int(os.getenv("QUICK_MAX_INPUTS", "10"))             # nombre de paires chargées
-MAX_PREDICTIONS = int(os.getenv("QUICK_MAX_PREDICTIONS", "3"))    # nombre de prédictions à écrire
+MAX_PREDICTIONS = int(os.getenv("QUICK_MAX_PREDICTIONS", "10"))    # nombre de prédictions à écrire
 PRED_SOURCE = os.getenv("QUICK_PRED_SOURCE", "val").lower()        # val | train | all
 
 # Optionnel: seed pour reproductibilité
 random.seed(42)
 torch.manual_seed(42)
 
-# Répertoires
-BASE_DIR = Path(__file__).parent.parent.parent  # scripts/quick/ -> scripts/ -> LONGLEAF/
+# Répertoires (script situé dans scripts/ désormais)
+BASE_DIR = Path(__file__).parent.parent
 DATA_INPUT = BASE_DIR / "Data_input"
 DATA_OUTPUT = BASE_DIR / "Data_output"
 SAVE_DIR = BASE_DIR / "runs" / f"{MODEL_SHORT}_{int(time.time())}"
 PREDICT_DIR = BASE_DIR / "Data_predict" / f"{MODEL_SHORT}_predict"
 PREDICT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Optionnel: nettoyage des prédictions précédentes
+if os.getenv("QUICK_CLEAN_PRED", "0") == "1":
+    removed = 0
+    for p in PREDICT_DIR.glob("*.txt"):
+        try:
+            p.unlink()
+            removed += 1
+        except Exception:
+            pass
+    print(f"🧹 Clean predictions: removed {removed} files from {PREDICT_DIR}")
 
 print(f"🏠 BASE_DIR: {BASE_DIR}")
 print(f"📥 DATA_INPUT: {DATA_INPUT}")
@@ -167,8 +178,7 @@ cfg = SFTConfig(
     gradient_accumulation_steps=GRAD_ACCUM,
     logging_steps=2,
     eval_strategy="no",
-    save_strategy="epoch",
-    save_total_limit=1,
+    save_strategy="no",
     learning_rate=LR,
     weight_decay=WEIGHT_DECAY,
     warmup_ratio=WARMUP_RATIO,
@@ -200,7 +210,7 @@ print("🔧 Getting trained model for testing (no save)...")
 trained_model = trainer.model
 trained_model.eval()
 
-print("🧪 Quick test - 3 predictions...")
+print(f"🧪 Quick test - predictions (max={MAX_PREDICTIONS})...")
 
 # Forcer l'usage du GPU 0 pour éviter un cast CPU->Float32 (ne pas passer device à pipeline quand accelerate est utilisé)
 device_id = 0 if torch.cuda.is_available() else -1

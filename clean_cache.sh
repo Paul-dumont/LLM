@@ -11,37 +11,30 @@ du -sh ~/.cache/huggingface
 
 echo ""
 echo "🔍 MODÈLES EN CACHE:"
-du -sh * | sort -hr
+du -sh * 2>/dev/null | sort -hr
 
 echo ""
-echo "⚠️  SUPPRESSION DES ANCIENS MODÈLES (garde les 4 principaux):"
+echo "⚠️  SUPPRESSION DES MODÈLES NON-QWEN (on garde uniquement 'models--Qwen--*')"
 
-# Garder seulement les modèles actuellement utilisés
-KEEP_MODELS=(
-    "models--HuggingFaceH4--zephyr-7b-beta"
-    "models--microsoft--Phi-3.5-mini-instruct" 
-    "models--Qwen--Qwen2.5-7B-Instruct"
-    "models--NousResearch--Llama-2-7b-chat-hf"
-)
-
-# Supprimer les autres modèles
+shopt -s nullglob
 for model in models--*; do
-    if [[ ! " ${KEEP_MODELS[@]} " =~ " ${model} " ]]; then
-        echo "🗑️  Suppression: $model"
-        rm -rf "$model"
+    if [[ "$model" == models--Qwen--* ]]; then
+        echo "✅ Gardé (Qwen): $model"
     else
-        echo "✅ Gardé: $model"
+        echo "🗑️  Suppression (non-Qwen): $model"
+        rm -rf -- "$model"
     fi
 done
+shopt -u nullglob
 
 echo ""
 echo "🧹 NETTOYAGE CACHE PIP:"
-pip cache purge
+pip cache purge || true
 
 echo ""
 echo "📊 ESPACE APRÈS NETTOYAGE:"
-du -sh ~/.cache/huggingface
-du -sh ~/
+du -sh ~/.cache/huggingface || true
+du -sh ~/ || true
 
 echo ""
 echo "🎯 NETTOYAGE TERMINÉ!"

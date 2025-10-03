@@ -56,14 +56,15 @@ if torch.cuda.is_available():
 PY
 
 # 5) Lancement du script quick dédié 7B
-QUICK_SCRIPT="scripts/quick/Qwen2.5-7B-Instruct-quick.py"
+QUICK_SCRIPT="scripts/Qwen2.5-7B-Instruct-quick.py"
 echo -e "\n🎯 Launching: $QUICK_SCRIPT"
 echo -e "⏰ Expected runtime: ~5-10 minutes\n"
 
 start_time=$(date +%s)
-export QUICK_MAX_INPUTS=${QUICK_MAX_INPUTS:-50}
-export QUICK_MAX_PREDICTIONS=${QUICK_MAX_PREDICTIONS:-20}
+export QUICK_MAX_INPUTS=${QUICK_MAX_INPUTS:-10}
+export QUICK_MAX_PREDICTIONS=${QUICK_MAX_PREDICTIONS:-10}
 export QUICK_PRED_SOURCE=${QUICK_PRED_SOURCE:-all}
+export QUICK_CLEAN_PRED=${QUICK_CLEAN_PRED:-1}
 python "$QUICK_SCRIPT"
 end_time=$(date +%s)
 runtime=$((end_time - start_time))

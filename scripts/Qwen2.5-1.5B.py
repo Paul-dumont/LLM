@@ -18,9 +18,10 @@ os.environ.setdefault("HF_HOME", str(Path.home()/".cache/huggingface"))
 os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER","1")
 
 # --- chemins ---
-INPUT_DIR  = Path("Data_input")
-OUTPUT_DIR = Path("Data_output")
-PRED_DIR   = Path("Data_predict") / "Qwen2.5-1.5B_predict"; PRED_DIR.mkdir(parents=True, exist_ok=True)
+BASE_DIR = Path(__file__).parent.parent
+INPUT_DIR  = BASE_DIR / "Data_input"
+OUTPUT_DIR = BASE_DIR / "Data_output"
+PRED_DIR   = BASE_DIR / "Data_predict" / "Qwen2.5-1.5B_predict"; PRED_DIR.mkdir(parents=True, exist_ok=True)
 
 assert INPUT_DIR.exists(),  f"Missing folder: {INPUT_DIR}"
 assert OUTPUT_DIR.exists(), f"Missing folder: {OUTPUT_DIR}"
@@ -85,8 +86,8 @@ cfg = SFTConfig(
     num_train_epochs=1,
     per_device_train_batch_size=1,
     logging_steps=1,
-    eval_strategy="steps",
-    eval_steps=10,
+    eval_strategy="no",
+    save_strategy="no",
     max_seq_length=1024,
     fp16=False,
     bf16=True

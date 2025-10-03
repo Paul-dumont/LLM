@@ -52,4 +52,4 @@ if torch.cuda.is_available():
 PY
 
 # lance TON script (même dossier)
-python "/nas/longleaf/home/dumontp/LONGLEAF/scripts/quick/Qwen2.5-1.5B.py"
+python "/nas/longleaf/home/dumontp/LONGLEAF/scripts/Qwen2.5-1.5B.py"
