@@ -2,7 +2,7 @@
 #SBATCH -n 1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=24g
-#SBATCH -t 00:30:00
+#SBATCH -t 03:00:00
 #SBATCH -p l40-gpu
 #SBATCH --qos=gpu_access
 #SBATCH --gres=gpu:1
@@ -67,7 +67,12 @@ PY
 ############################
 # 5) Lancer le script spécifique
 ############################
-SCRIPT_FILE="scripts/${MODEL:-Qwen-0.5B}.py"
+# Prendre le premier argument ou utiliser la valeur par défaut
+if [[ -n "${1:-}" ]]; then
+    SCRIPT_FILE="$1"
+else
+    SCRIPT_FILE="scripts/${MODEL:-Qwen-0.5B}.py"
+fi
 echo "🚀 Launching: $SCRIPT_FILE"
 
 if [[ -f "$SCRIPT_FILE" ]]; then

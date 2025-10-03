@@ -3,34 +3,22 @@ import re, random, time, os
 import torch
 from datasets import Dataset, DatasetDict
 from transformers import (
-    AutoTokenizer, AutoModelForCausalLM, pipeline,# --- MODE TEST: Générer seulement 10 prédictions pour validation
-print("🧪 TEST MODE: Generating 10 predictions for format validation...")
-pipe = pipeline("text-generation", 
-                model=trainer.model, 
-                tokenizer=tok,
-                max_new_tokens=512,
-                do_sample=False,
-                pad_token_id=tok.eos_token_id)
-
-# Prendre les 10 premiers exemples de tous les pairs pour test complet
-test_pairs = pairs[:10]  
-print(f"🔬 Testing on {len(test_pairs)} examples...")
-
-for i, pair in enumerate(test_pairs):ndBytesConfig
+    AutoTokenizer, AutoModelForCausalLM, pipeline,
+    BitsAndBytesConfig
 )
 from trl import SFTTrainer, SFTConfig
 from peft import LoraConfig, PeftModel
 
-# -------------------- Réglages optimisés pour Phi-3.5 --------------------
-MODEL_ID = "microsoft/Phi-3.5-mini-instruct"     # Phi-3.5 Mini 3.8B (optimal taille/perf)
-MODEL_SHORT = "Phi-3.5-Mini"                     # Pour runs/
-MAX_SEQ_LEN = 2048                               # 2K tokens (vos fichiers font ~2.8K max)
-NUM_EPOCHS = 2                                   # Plus d'epochs car modèle plus petit
-BATCH_SIZE = 2                                   # Batch plus gros (modèle plus petit)
-GRAD_ACCUM = 8                                   # => batch effectif = 16
-LR = 3e-4                                        # LR plus élevé pour petit modèle
+# -------------------- Réglages optimisés pour Qwen2.5-7B --------------------
+MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"           # Qwen2.5 7B Instruct (très performant)
+MODEL_SHORT = "Qwen2.5-7B"                      # Pour runs/
+MAX_SEQ_LEN = 4096                               # 4K tokens (contexte large disponible mais pas nécessaire)
+NUM_EPOCHS = 1                                   # 1 epoch suffisant pour 7B
+BATCH_SIZE = 1                                   # Batch réduit (7B plus gros)
+GRAD_ACCUM = 16                                  # => batch effectif = 16
+LR = 2e-4                                        # LR standard pour 7B
 WEIGHT_DECAY = 0.01                              # Régularisation
-WARMUP_RATIO = 0.1                               # 10% warmup
+WARMUP_RATIO = 0.05                              # 5% warmup
 
 # Répertoires
 BASE_DIR = Path(__file__).parent.parent
@@ -76,7 +64,7 @@ for inp_file in input_files:
     if not note or not lab:
         continue
     
-    # Format de conversation Phi-3.5
+    # Format de conversation Qwen2.5
     messages = [
         {"role": "system",    "content": INSTRUCTION},
         {"role": "user",      "content": note},
@@ -94,7 +82,7 @@ val_pairs   = pairs[-n_val:]
 
 print(f"🚀 Training {MODEL_SHORT} | Total={n} | Train={len(train_pairs)} | Val={len(val_pairs)}")
 
-# --- Tokenizer + chat template (Phi-3.5 a déjà son template)
+# --- Tokenizer + chat template (Qwen2.5 a son propre template)
 tok = AutoTokenizer.from_pretrained(MODEL_ID, use_fast=True, trust_remote_code=True)
 if tok.pad_token is None:
     tok.pad_token = tok.eos_token
@@ -120,7 +108,7 @@ dset = DatasetDict({"train": train_ds, "validation": val_ds})
 
 print(f"📊 Dataset ready - Train: {len(train_ds)} | Val: {len(val_ds)}")
 
-# --- 4-bit quantization config (optimal pour Phi-3.5)
+# --- 4-bit quantization config pour gérer le 7B
 bnb_cfg = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
@@ -134,12 +122,14 @@ model = AutoModelForCausalLM.from_pretrained(
     quantization_config=bnb_cfg,
     device_map="auto",
     trust_remote_code=True,
-    torch_dtype=torch.bfloat16,
+    dtype=torch.bfloat16,      # Correction: dtype au lieu de torch_dtype
+    use_cache=False,           # Éviter les problèmes de cache
+    attn_implementation="eager", # Attention eager plus stable
 )
 
 print(f"✅ Model loaded with 4-bit quantization")
 
-# --- LoRA config optimisé pour Phi-3.5
+# --- LoRA config pour Qwen2.5 (cibles spécifiques)
 peft_cfg = LoraConfig(
     r=16,                       # Rang LoRA
     lora_alpha=32,              # Alpha scaling
@@ -152,7 +142,7 @@ peft_cfg = LoraConfig(
     ],
 )
 
-# --- SFT config optimisé pour Phi-3.5
+# --- SFT config optimisé pour 7B
 cfg = SFTConfig(
     output_dir=str(SAVE_DIR),
     num_train_epochs=NUM_EPOCHS,
@@ -162,7 +152,7 @@ cfg = SFTConfig(
     eval_strategy="steps",
     eval_steps=max(20, len(train_ds)//10),
     save_strategy="epoch",
-    save_total_limit=2,
+    save_total_limit=1,
     learning_rate=LR,
     weight_decay=WEIGHT_DECAY,
     warmup_ratio=WARMUP_RATIO,
@@ -195,23 +185,32 @@ trainer.save_model(str(final_dir))
 tok.save_pretrained(str(final_dir))
 print(f"💾 Model saved to: {final_dir}")
 
-# --- Tester sur quelques exemples
+# --- Fusionner et tester (approche Llama qui fonctionne)
+print("🔧 Merging LoRA adapters with base model...")
+merged = trainer.model.merge_and_unload()
+
 print("🧪 Testing model on validation examples...")
-pipe = pipeline("text-generation", 
-                model=trainer.model, 
-                tokenizer=tok,
-                max_new_tokens=512,
-                do_sample=False,
-                pad_token_id=tok.eos_token_id)
+gen = pipeline(
+    "text-generation",
+    model=merged,
+    tokenizer=tok,
+    return_full_text=False,
+    device_map="auto"
+)
 
 for i, pair in enumerate(val_pairs[:3]):
-    test_prompt = render([
+    test_messages = [
         {"role": "system", "content": INSTRUCTION},
         {"role": "user", "content": pair["note_only"]}
-    ], add_generation_prompt=True)
+    ]
+    test_prompt = render(test_messages, add_generation_prompt=True)
     
-    result = pipe(test_prompt)
-    generated = result[0]["generated_text"][len(test_prompt):].strip()
+    try:
+        result = gen(test_prompt, max_new_tokens=512, do_sample=False)
+        generated = result[0]["generated_text"].strip()
+    except Exception as e:
+        print(f"❌ Erreur génération exemple {i+1}: {e}")
+        generated = "ERREUR_GENERATION"
     
     # Sauvegarder la prédiction
     pred_file = PREDICT_DIR / f"{pair['cid']}_pred.txt"

@@ -139,8 +139,9 @@ model = AutoModelForCausalLM.from_pretrained(
     quantization_config=bnb_cfg,
     device_map="auto",
     trust_remote_code=True,
-    torch_dtype=torch.bfloat16,
-    attn_implementation="flash_attention_2" if torch.cuda.is_available() else "eager",
+    dtype=torch.bfloat16,  # Fixed: torch_dtype -> dtype
+    use_cache=False,  # Fixed: Éviter les problèmes de cache
+    attn_implementation="eager",  # Fixed: Use eager instead of flash_attention_2
 )
 
 print(f"✅ Zephyr-7B loaded with 4-bit quantization")
@@ -180,7 +181,7 @@ cfg = SFTConfig(
     gradient_checkpointing=True,
     packing=False,
     dataset_text_field="text",
-    remove_unused_columns=False,
+    # Fixed: Remove problematic parameter
     report_to=[],
 )
 
@@ -189,7 +190,7 @@ trainer = SFTTrainer(
     args=cfg,
     train_dataset=dset["train"],
     eval_dataset=dset["validation"],
-    tokenizer=tok,
+    tokenizer=tok,  # Fixed: Back to tokenizer for TRL 0.9.6
     peft_config=peft_cfg,
 )
 
@@ -203,17 +204,17 @@ trainer.save_model(str(final_dir))
 tok.save_pretrained(str(final_dir))
 print(f"💾 Zephyr model saved to: {final_dir}")
 
-# --- MODE TEST: Générer seulement 10 prédictions pour validation
+# --- MODE TEST: Fusionner et générer (approche Llama qui fonctionne)
+print("🔧 Merging LoRA adapters with base model...")
+merged = trainer.model.merge_and_unload()
+
 print("🧪 TEST MODE: Generating 10 predictions for format validation...")
-pipe = pipeline(
-    "text-generation", 
-    model=trainer.model, 
+gen = pipeline(
+    "text-generation",
+    model=merged,
     tokenizer=tok,
-    max_new_tokens=512,
-    do_sample=False,                            # Déterministe
-    temperature=0.1,                            # Très peu de randomness
-    pad_token_id=tok.eos_token_id,
-    trust_remote_code=True
+    return_full_text=False,
+    device_map="auto"
 )
 
 # Prendre les 10 premiers exemples de tous les pairs (pas juste validation)
@@ -221,13 +222,23 @@ test_pairs = pairs[:10]  # 10 premiers pour test complet
 print(f"🔬 Testing on {len(test_pairs)} examples...")
 
 for i, pair in enumerate(test_pairs):
-    test_prompt = render([
+    test_messages = [
         {"role": "system", "content": INSTRUCTION},
         {"role": "user", "content": pair["note_only"]}
-    ], add_generation_prompt=True)
+    ]
+    test_prompt = render(test_messages, add_generation_prompt=True)
     
-    result = pipe(test_prompt)
-    generated = result[0]["generated_text"][len(test_prompt):].strip()
+    try:
+        result = gen(test_prompt, max_new_tokens=512, do_sample=False)
+        generated = result[0]["generated_text"].strip()
+        
+        # Nettoyer les tokens spéciaux Zephyr
+        if "<|im_end|>" in generated:
+            generated = generated.split("<|im_end|>")[0].strip()
+            
+    except Exception as e:
+        print(f"❌ Erreur génération exemple {i+1}: {e}")
+        generated = "ERREUR_GENERATION"
     
     # Nettoyer la sortie (enlever tokens spéciaux si présents)
     if "<|im_end|>" in generated:
