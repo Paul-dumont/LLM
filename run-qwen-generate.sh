@@ -90,7 +90,7 @@ echo "🎯 Starting generation script..."
 echo ""
 
 # ==================== LANCEMENT DU SCRIPT PRINCIPAL ====================
-python scripts/generate_qwen_full_predictions.py
+python scripts/regenerate_with_exact_pipeline.py
 
 # ==================== CAPTURE DU CODE DE RETOUR ====================
 exit_code=$?
