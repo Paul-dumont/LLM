@@ -18,7 +18,7 @@ from peft import LoraConfig, get_peft_model
 # ==================== CONFIGURATION IDENTIQUE ====================
 MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
 MODEL_SHORT = "Qwen2.5-7B-full"
-MAX_PREDICTIONS = 5
+MAX_PREDICTIONS = 500
 
 # ==================== PROMPT SYSTÈME IDENTIQUE ====================
 INSTRUCTION = """You are a medical data extraction specialist. Extract the following 56 specific clinical indicators from this medical note and format as key=value pairs. Use "unknown" if information is not available.
@@ -126,49 +126,27 @@ if not model_dirs:
 model_dir = sorted(model_dirs, key=lambda d: d.parent.stat().st_mtime)[-1]
 print(f"🤖 Using model: {model_dir}")
 
-# Get IDs from original predictions
-predict_src = BASE_DIR / "Data_predict" / f"{MODEL_SHORT}_predict"
-pred_files = sorted([p for p in predict_src.glob("*.txt") if re.match(r"^B\d+_pred\.txt$", p.name)])
-ids = [get_id(p.name) for p in pred_files if get_id(p.name)]
-print(f"📊 Found {len(ids)} IDs to regenerate: {', '.join(ids)}")
-
-# ==================== CHARGEMENT COMPLET DES DONNÉES IDENTIQUE ====================
-print("📂 Loading data for eval pairs reconstruction...")
+print("📂 Loading all input notes for generation...")
 pairs = []
 input_files = sorted(DATA_INPUT.glob("*.txt"))
-output_files = sorted(DATA_OUTPUT.glob("*.txt"))
-
 for inp_file in input_files:
     cid = get_id(inp_file.name)
-    if not cid or cid not in ids:  # Seulement les IDs qu'on veut régénérer
+    if not cid:
         continue
-    
-    # Chercher le fichier de sortie correspondant
-    out_file = None
-    for of in output_files:
-        if get_id(of.name) == cid:
-            out_file = of
-            break
-    
-    if not out_file or not out_file.exists():
-        continue
-    
     try:
         note = inp_file.read_text(encoding='utf-8').strip()
-        lab = out_file.read_text(encoding='utf-8').strip()
-        if note and lab:
+        if note:
             messages = [
                 {"role": "system", "content": INSTRUCTION},
-                {"role": "user", "content": note},
-                {"role": "assistant", "content": lab},
+                {"role": "user", "content": note}
             ]
             pairs.append({"cid": cid, "messages": messages, "note_only": note})
     except:
         continue
 
-# Simuler eval_pairs comme dans l'original
+# Prendre tous les pairs d'input
 eval_pairs = pairs[:MAX_PREDICTIONS]
-print(f"📊 Eval pairs ready: {len(eval_pairs)}")
+print(f"📊 Eval pairs ready: {len(eval_pairs)} (from Data_input)")
     
 # ==================== CONFIGURATION DU TOKENIZER ====================
 print("🔧 Loading tokenizer...")
