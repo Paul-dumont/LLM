@@ -88,7 +88,7 @@ echo "🎯 Starting full training script..."
 echo ""
 
 # ==================== LANCEMENT DU SCRIPT PRINCIPAL ====================
-python scripts/Qwen2.5-7B-Instruct-full.py
+python scripts/Qwen2.5-7B-train.py
 
 # ==================== CAPTURE DU CODE DE RETOUR ====================
 exit_code=$?
