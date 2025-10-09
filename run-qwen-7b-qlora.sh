@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==================== SLURM JOB CONFIGURATION ====================
-#SBATCH --job-name=full
+#SBATCH --job-name=qlora
 #SBATCH --output=logs/qwen-7b-full-%j.out
 #SBATCH --error=logs/qwen-7b-full-%j.err
 #SBATCH --nodes=1
@@ -88,7 +88,7 @@ echo "🎯 Starting full training script..."
 echo ""
 
 # ==================== LANCEMENT DU SCRIPT PRINCIPAL ====================
-python scripts/Qwen2.5-7B-train.py
+python scripts/Qwen2.5-7B-qlora.py
 
 # ==================== CAPTURE DU CODE DE RETOUR ====================
 exit_code=$?
