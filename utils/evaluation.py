@@ -6,7 +6,7 @@ from sklearn.metrics import f1_score
 
 
 # Dossiers de prédiction et de vérité terrain structurée
-PRED_DIR = "Data_predict/Qwen2.5-7B-full_predict_500_fixed/"
+PRED_DIR = "Data_predict/QWEN/"
 GT_DIR = "Data_output/"
 
 # Indexer les fichiers de vérité terrain structurée

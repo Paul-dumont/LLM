@@ -14,7 +14,7 @@ PREDICT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Prompt détaillé pour l'extraction
 INSTRUCTION = """You are a medical data extraction specialist. Extract the following 56 specific clinical indicators from this medical note 
-and format as key=value pairs. Only extract indicators that have actual information available in the text.
+and format as key: value pairs. Only extract indicators that have actual information available in the text.
 
 REQUIRED INDICATORS TO LOOK FOR:
 patient_id=
@@ -76,12 +76,18 @@ pain_aggravating_factors=
 
 EXTRACTION RULES:
 - Use exact indicator names as shown above
-- For boolean indicators: use "true" if explicitly present/confirmed, "false" only if explicitly stated as absent/negative
+- For boolean indicators: use "True" or "False" only if explicitly stated
 - For numeric values: extract numbers and units (e.g., "25 years", "7/10", "45mm")
 - For text values: be concise but specific
 - If multiple values exist, use semicolon separation
-- IMPORTANT: Only include indicators that have actual values found in the text. Skip indicators that are not mentioned or unknown. Do not output any indicator with "unknown" or empty values.
-- Extract as many relevant indicators as possible, but only those with concrete information from the note."""
+- CRITICAL: Do NOT try to include all 56 indicators. Only extract indicators that are EXPLICITLY MENTIONED in the note.
+- It is PERFECTLY FINE to have only 10-20 indicators if that's all the information available.
+- Do not invent or assume values for indicators not present in the text.
+- Do not output any indicator with "unknown" or empty values.
+- If the note contains information about different aspects or time periods, separate them with "----------------------------------------------------------------------------------------------------"
+- If a section has no relevant information, end it with "NoInfo"
+- Extract as many relevant indicators as possible, but ONLY those with concrete information from the note.
+- Format: key: value (one per line)"""
 
 print("🔧 Loading model and tokenizer...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
@@ -114,6 +120,7 @@ gen = pipeline(
 
 print("📂 Processing input files...")
 input_files = list(DATA_INPUT.glob("*.txt"))
+input_files = input_files[:5]  # Limit to 5 predictions for testing
 print(f"Found {len(input_files)} input files")
 
 for i, input_file in enumerate(input_files):

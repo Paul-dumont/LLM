@@ -1,5 +1,5 @@
-# ==================== QWEN 2.5-7B INSTRUCT - FULL TRAINING (NO LoRA/QUANTIZATION) ====================
-# Script d'entraînement complet SANS LoRA et SANS quantization pour le fine-tuning du modèle Qwen2.5-7B-Instruct
+# ==================== QWEN 2.5-7B INSTRUCT - ENTRAÎNEMENT COMPLET ====================
+# Script d'entraînement complet pour le fine-tuning du modèle Qwen2.5-7B-Instruct
 # Utilise toutes les données disponibles avec des paramètres optimisés pour la production
 
 # ==================== IMPORTS ET CONFIGURATION ====================
@@ -8,25 +8,24 @@ import re, random, time, os, json
 import torch
 from datasets import Dataset, DatasetDict
 from transformers import (
-    AutoTokenizer, AutoModelForCausalLM,
+    AutoTokenizer, AutoModelForCausalLM, 
     TrainingArguments
 )
 from trl import SFTTrainer, SFTConfig
-
 # ==================== CONFIGURATION DU MODÈLE ====================
 MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
-MODEL_SHORT = "Qwen2.5-7B-full"
+MODEL_SHORT = "Qwen2.5-7B-train-full"
 
 # ==================== HYPERPARAMÈTRES D'ENTRAÎNEMENT COMPLET ====================
 MAX_SEQ_LEN = 3000         # Compromis performance optimal: couvre 95.4% des notes (477/500) - très rapide
 NUM_EPOCHS = 3             # 3 époques pour un apprentissage approfondi
-BATCH_SIZE = 1             # Batch size très petit pour full training sans LoRA
-GRAD_ACCUM = 8             # Accumulation élevée pour batch effectif = 8
-LR = 1e-5                  # Learning rate très bas pour full training (risque d'overfitting)
+BATCH_SIZE = 4             # Batch size optimisé pour A100 (plus de VRAM)
+GRAD_ACCUM = 2             # Accumulation pour batch effectif = 8 (performance optimale)
+LR = 2e-4                  # Learning rate optimal pour fine-tuning complet
 WEIGHT_DECAY = 0.01        # Régularisation L2 pour éviter l'overfitting
-WARMUP_RATIO = 0.1         # 10% de warmup pour full training
-SAVE_STEPS = 50            # Sauvegarder toutes les 50 steps (plus fréquent)
-EVAL_STEPS = 50            # Évaluer toutes les 50 steps
+WARMUP_RATIO = 0.05        # 5% de warmup (plus conservateur)
+SAVE_STEPS = 25            # Sauvegarder toutes les 25 steps (plus fréquent pour 150 steps total)
+EVAL_STEPS = 25            # Évaluer toutes les 25 steps (6 évaluations au total)
 LOGGING_STEPS = 10         # Log toutes les 10 steps
 
 # ==================== CONTRÔLES PAR VARIABLES D'ENVIRONNEMENT ====================
@@ -46,7 +45,7 @@ if torch.cuda.is_available():
 # ==================== CONFIGURATION DES RÉPERTOIRES ====================
 BASE_DIR = Path(__file__).parent.parent
 DATA_INPUT = BASE_DIR / "Data_input"
-DATA_OUTPUT = BASE_DIR / "Data_output"
+DATA_OUTPUT = BASE_DIR / "Data_output2"
 SAVE_DIR = BASE_DIR / "runs" / f"{MODEL_SHORT}_{int(time.time())}"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -57,7 +56,6 @@ print(f"💾 SAVE_DIR: {SAVE_DIR}")
 
 # ==================== INITIALISATION W&B (OPTIONNEL) ====================
 if USE_WANDB:
-    import wandb
     wandb.init(
         project="qwen-7b-clinical",
         name=f"{MODEL_SHORT}_{int(time.time())}",
@@ -174,13 +172,14 @@ dset = DatasetDict({"train": train_ds, "eval": eval_ds})
 
 print(f"📊 Datasets ready - Train: {len(train_ds)} | Eval: {len(eval_ds)}")
 
-# ==================== CHARGEMENT DU MODÈLE SANS QUANTIZATION ====================
-print("🤖 Loading model in full precision (BF16)...")
+# ==================== CHARGEMENT DU MODÈLE ====================
+print("🤖 Loading model without quantization...")
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     trust_remote_code=True,
-    torch_dtype=torch.bfloat16,  # BF16 for better stability on A100
+    use_cache=False,
+    attn_implementation="eager",
 )
 
 model.config.pad_token_id = tok.pad_token_id
@@ -189,8 +188,8 @@ model.config.use_cache = False
 
 print("✅ Model loaded successfully")
 
-# ==================== CONFIGURATION D'ENTRAÎNEMENT FULL (SANS LoRA) ====================
-print("⚙️ Setting up full training configuration...")
+# ==================== CONFIGURATION D'ENTRAÎNEMENT COMPLÈTE ====================
+print("⚙️ Setting up training configuration...")
 
 report_to_list = ["wandb"] if USE_WANDB else []
 
@@ -226,9 +225,9 @@ cfg = SFTConfig(
     greater_is_better=False,
     
     # ==================== TECHNIQUES D'OPTIMISATION ====================
-    fp16=False,
-    bf16=True,  # BF16 for A100 GPUs
-    gradient_checkpointing=True,                    # Crucial pour full training
+    fp16=True,
+    bf16=False,
+    gradient_checkpointing=True,
     dataloader_pin_memory=True,
     
     # ==================== CONFIGURATION SFT ====================
@@ -252,7 +251,6 @@ trainer = SFTTrainer(
     train_dataset=dset["train"],
     eval_dataset=dset["eval"],
     tokenizer=tok,
-    # PAS de peft_config pour full training
 )
 
 # ==================== SAUVEGARDE DU CONFIG ====================
@@ -272,8 +270,7 @@ config_info = {
         "train_size": len(train_pairs),
         "eval_size": len(eval_pairs),
         "eval_ratio": EVAL_RATIO,
-    },
-    "full_training": True,  # Indicateur que c'est du full training
+    }
 }
 
 with open(SAVE_DIR / "training_config.json", "w") as f:
@@ -283,7 +280,7 @@ print(f"📋 Training config saved to: {SAVE_DIR / 'training_config.json'}")
 
 # ==================== LANCEMENT DE L'ENTRAÎNEMENT ====================
 print("\n" + "="*80)
-print("🚀 STARTING FULL TRAINING (NO LoRA/QUANTIZATION)")
+print("🚀 STARTING FULL TRAINING")
 print("="*80)
 
 start_time = time.time()
@@ -295,7 +292,7 @@ try:
     train_time = time.time() - start_time
     
     print("\n" + "="*80)
-    print("✅ FULL TRAINING COMPLETED SUCCESSFULLY!")
+    print("✅ TRAINING COMPLETED SUCCESSFULLY!")
     print("="*80)
     print(f"⏱️  Total training time: {train_time:.1f}s ({train_time/60:.1f} minutes)")
     print(f"📉 Final training loss: {train_result.training_loss:.4f}")
@@ -304,7 +301,7 @@ try:
     if SAVE_FINAL:
         print("💾 Saving final model...")
         
-        # Sauvegarder le modèle complet
+        # Sauvegarder le modèle
         trainer.save_model(str(SAVE_DIR / "final_model"))
         
         # Sauvegarder le tokenizer
@@ -322,7 +319,7 @@ try:
             json.dump(results, f, indent=2)
         
         print(f"✅ Model saved to: {SAVE_DIR / 'final_model'}")
-        print(f"� Results saved to: {SAVE_DIR / 'training_results.json'}")
+        print(f"📊 Results saved to: {SAVE_DIR / 'training_results.json'}")
     
     # ==================== ÉVALUATION FINALE ====================
     print("\n🧪 Running final evaluation...")
@@ -349,7 +346,7 @@ try:
         for old_pred in PREDICT_DIR.glob("*.txt"):
             old_pred.unlink()
         
-        # Pipeline de génération
+        # Pipeline de génération (IDENTIQUE au smoke test qui fonctionnait)
         print("🔧 Getting trained model for testing...")
         trained_model = trainer.model
         trained_model.eval()
@@ -377,12 +374,12 @@ try:
             try:
                 result = gen(
                     test_prompt,
-                    max_new_tokens=500,
+                    max_new_tokens=500,  # Optimisé : couvre 375 tokens moyens + marge sécurité
                     do_sample=False
                 )
                 generated = result[0]["generated_text"].strip()
                 
-                # Sauvegarder la prédiction
+                # Sauvegarder la prédiction (même format que smoke test)
                 pred_file = PREDICT_DIR / f"{pair['cid']}_pred.txt"
                 pred_file.write_text(generated, encoding='utf-8')
                 

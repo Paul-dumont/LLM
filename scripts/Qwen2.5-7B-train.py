@@ -15,7 +15,7 @@ from trl import SFTTrainer, SFTConfig
 from peft import LoraConfig, get_peft_model
 # ==================== CONFIGURATION DU MODÈLE ====================
 MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
-MODEL_SHORT = "Qwen2.5-7B-simple"
+MODEL_SHORT = "Qwen2.5-7B-train"
 
 # ==================== HYPERPARAMÈTRES D'ENTRAÎNEMENT COMPLET ====================
 MAX_SEQ_LEN = 3000         # Compromis performance optimal: couvre 95.4% des notes (477/500) - très rapide
@@ -46,7 +46,7 @@ if torch.cuda.is_available():
 # ==================== CONFIGURATION DES RÉPERTOIRES ====================
 BASE_DIR = Path(__file__).parent.parent
 DATA_INPUT = BASE_DIR / "Data_input"
-DATA_OUTPUT = BASE_DIR / "Data_output"
+DATA_OUTPUT = BASE_DIR / "Data_output2"
 SAVE_DIR = BASE_DIR / "runs" / f"{MODEL_SHORT}_{int(time.time())}"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
