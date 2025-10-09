@@ -15,16 +15,16 @@ from trl import SFTTrainer, SFTConfig
 from peft import LoraConfig, get_peft_model
 # ==================== CONFIGURATION DU MODÈLE ====================
 MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
-MODEL_SHORT = "Qwen2.5-7B-train"
+MODEL_SHORT = "train"
 
 # ==================== HYPERPARAMÈTRES D'ENTRAÎNEMENT COMPLET ====================
-MAX_SEQ_LEN = 3000         # Compromis performance optimal: couvre 95.4% des notes (477/500) - très rapide
+MAX_SEQ_LEN = 1024         # Séquence réduite pour tenir en mémoire GPU
 NUM_EPOCHS = 3             # 3 époques pour un apprentissage approfondi
 BATCH_SIZE = 2             # Batch size plus agressif possible avec 3000 tokens
 GRAD_ACCUM = 4             # Accumulation pour batch effectif = 8 (performance optimale)
-LR = 2e-4                  # Learning rate optimal pour LoRA (plus rapide que 1e-4)
+LR = 1e-4                  # Learning rate optimal pour LoRA (plus stable que 2e-4)
 WEIGHT_DECAY = 0.01        # Régularisation L2 pour éviter l'overfitting
-WARMUP_RATIO = 0.05        # 5% de warmup (plus conservateur)
+WARMUP_RATIO = 0.1        # 10% de warmup pour plus de stabilité
 SAVE_STEPS = 25            # Sauvegarder toutes les 25 steps (plus fréquent pour 150 steps total)
 EVAL_STEPS = 25            # Évaluer toutes les 25 steps (6 évaluations au total)
 LOGGING_STEPS = 10         # Log toutes les 10 steps
@@ -225,15 +225,16 @@ cfg = SFTConfig(
     
     # ==================== PARAMÈTRES D'ENTRAÎNEMENT ====================
     num_train_epochs=NUM_EPOCHS,
-    per_device_train_batch_size=BATCH_SIZE,
-    per_device_eval_batch_size=BATCH_SIZE,
-    gradient_accumulation_steps=GRAD_ACCUM,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
+    gradient_accumulation_steps=8,  # Accumulation augmentée
     
     # ==================== OPTIMISATION ====================
     learning_rate=LR,
     weight_decay=WEIGHT_DECAY,
     warmup_ratio=WARMUP_RATIO,
     lr_scheduler_type="cosine",                     # Scheduler cosine pour meilleure convergence
+    max_grad_norm=1.0,                              # Gradient clipping pour éviter les NaN
     
     # ==================== ÉVALUATION ET LOGGING ====================
     eval_strategy="steps",
@@ -250,10 +251,11 @@ cfg = SFTConfig(
     greater_is_better=False,
     
     # ==================== TECHNIQUES D'OPTIMISATION ====================
-    fp16=True,
-    bf16=False,
+    fp16=False,
+    bf16=True,
     gradient_checkpointing=True,
     dataloader_pin_memory=True,
+    dataloader_num_workers=0,  # Réduit la mémoire consommée
     
     # ==================== CONFIGURATION SFT ====================
     max_seq_length=MAX_SEQ_LEN,
@@ -327,21 +329,26 @@ try:
     print("✅ TRAINING COMPLETED SUCCESSFULLY!")
     print("="*80)
     print(f"⏱️  Total training time: {train_time:.1f}s ({train_time/60:.1f} minutes)")
-    print(f"📉 Final training loss: {train_result.training_loss:.4f}")
+    training_loss = train_result.training_loss
+    if training_loss is not None and not (training_loss != training_loss):  # Check if not NaN
+        print(f"📉 Final training loss: {training_loss:.4f}")
+    else:
+        print("📉 Final training loss: NaN (training failed)")
+        training_loss = float('nan')
     
     # ==================== SAUVEGARDE FINALE ====================
     if SAVE_FINAL:
         print("💾 Saving final model...")
         
         # Sauvegarder le modèle LoRA
-        trainer.save_model(str(SAVE_DIR / "final_model"))
+    # trainer.save_model(str(SAVE_DIR / "final_model"))  # Désactivé: ne pas sauvegarder le modèle fine-tuné
         
         # Sauvegarder le tokenizer
         tok.save_pretrained(str(SAVE_DIR / "final_model"))
         
         # Sauvegarder les résultats d'entraînement
         results = {
-            "training_loss": train_result.training_loss,
+            "training_loss": training_loss,
             "training_time": train_time,
             "total_steps": train_result.global_step,
             "epochs_completed": NUM_EPOCHS,
@@ -356,12 +363,17 @@ try:
     # ==================== ÉVALUATION FINALE ====================
     print("\n🧪 Running final evaluation...")
     eval_result = trainer.evaluate()
-    print(f"📊 Final evaluation loss: {eval_result['eval_loss']:.4f}")
+    eval_loss = eval_result.get('eval_loss', float('nan'))
+    if eval_loss is not None and not (eval_loss != eval_loss):  # Check if not NaN
+        print(f"📊 Final evaluation loss: {eval_loss:.4f}")
+    else:
+        print("📊 Final evaluation loss: NaN (possible training issue)")
+        eval_loss = float('nan')
     
     if USE_WANDB:
         wandb.log({
             "final_train_loss": train_result.training_loss,
-            "final_eval_loss": eval_result["eval_loss"],
+            "final_eval_loss": eval_loss,
             "training_time": train_time
         })
         wandb.finish()
@@ -382,7 +394,8 @@ try:
         print("🔧 Getting trained model for testing...")
         trained_model = trainer.model
         trained_model.eval()
-        
+        # Correction : conversion du modèle en float32 pour la génération
+        trained_model = trained_model.to(torch.float32)
         from transformers import pipeline
         device_id = 0 if torch.cuda.is_available() else -1
         gen = pipeline(

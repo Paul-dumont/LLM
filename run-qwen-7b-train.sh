@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==================== SLURM JOB CONFIGURATION ====================
-#SBATCH --job-name=qwen-7b-full
+#SBATCH --job-name=full
 #SBATCH --output=logs/qwen-7b-full-%j.out
 #SBATCH --error=logs/qwen-7b-full-%j.err
 #SBATCH --nodes=1
