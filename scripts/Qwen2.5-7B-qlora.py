@@ -80,7 +80,7 @@ def load_data(tok):
         raise RuntimeError("Aucune paire appariée note/label trouvée.")
 
     random.shuffle(pairs)
-    pairs = pairs[:50]  # limiter pour test rapide
+    # pairs = pairs[:50]  # limiter pour test rapide
 
     n_eval = int(0.2 * len(pairs))
     if n_eval == 0:

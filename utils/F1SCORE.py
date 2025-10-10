@@ -4,22 +4,61 @@ from collections import defaultdict
 
 # Define the 56 criteria
 CRITERIA = [
-    "patient_id", "patient_age", "headache_intensity", "headache_frequency",
-    "headache_location", "migraine_history", "migraine_frequency",
-    "average_daily_pain_intensity", "diet_score", "tmj_pain_rating",
-    "disability_rating", "jaw_function_score", "jaw_clicking", "jaw_crepitus",
-    "jaw_locking", "maximum_opening", "maximum_opening_without_pain",
-    "disc_displacement", "muscle_pain_score", "muscle_pain_location",
-    "muscle_spasm_present", "muscle_tenderness_present", "muscle_stiffness_present",
-    "muscle_soreness_present", "joint_pain_areas", "joint_arthritis_location",
-    "neck_pain_present", "back_pain_present", "earache_present", "tinnitus_present",
-    "vertigo_present", "hearing_loss_present", "hearing_sensitivity_present",
-    "sleep_apnea_diagnosed", "sleep_disorder_type", "airway_obstruction_present",
-    "anxiety_present", "depression_present", "stress_present", "autoimmune_condition",
-    "fibromyalgia_present", "current_medications", "previous_medications",
-    "adverse_reactions", "appliance_history", "current_appliance", "cpap_used",
-    "apap_used", "bipap_used", "physical_therapy_status", "pain_onset_date",
-    "pain_duration", "pain_frequency", "onset_triggers", "pain_relieving_factors",
+    "patient_id",
+    "patient_age",
+    "headache_intensity",
+    "headache_frequency",
+    "headache_location",
+    "migraine_history",
+    "migraine_frequency",
+    "average_daily_pain_intensity",
+    "diet_score",
+    "tmj_pain_rating",
+    "disability_rating",
+    "jaw_function_score",
+    "jaw_clicking",
+    "jaw_crepitus",
+    "jaw_locking", 
+    "maximum_opening", 
+    "maximum_opening_without_pain",
+    "disc_displacement", 
+    "muscle_pain_score", 
+    "muscle_pain_location",
+    "muscle_spasm_present", 
+    "muscle_tenderness_present", 
+    "muscle_stiffness_present",
+    "muscle_soreness_present", 
+    "joint_pain_areas", 
+    "joint_arthritis_location",
+    "neck_pain_present", 
+    "back_pain_present", 
+    "earache_present", 
+    "tinnitus_present",
+    "vertigo_present", 
+    "hearing_loss_present", 
+    "hearing_sensitivity_present",
+    "sleep_apnea_diagnosed",
+    "sleep_disorder_type",
+    "airway_obstruction_present",
+    "anxiety_present",
+    "depression_present",
+    "stress_present",
+    "autoimmune_condition",
+    "fibromyalgia_present", 
+    "current_medications", 
+    "previous_medications",
+    "adverse_reactions",
+    "appliance_history",
+    "current_appliance",
+    "cpap_used",
+    "apap_used", 
+    "bipap_used",
+    "physical_therapy_status", 
+    "pain_onset_date",
+    "pain_duration", 
+    "pain_frequency", 
+    "onset_triggers", 
+    "pain_relieving_factors",
     "pain_aggravating_factors"
 ]
 
@@ -28,8 +67,8 @@ def parse_summary_file(file_path):
     data = {}
     with open(file_path, 'r') as f:
         for line in f:
-            if ':' in line:
-                key, value = line.split(':', 1)
+            if '=' in line:
+                key, value = line.split('=', 1)
                 key = key.strip()
                 value = value.strip()
                 if key in CRITERIA:
@@ -61,18 +100,18 @@ def evaluate_folders(manual_folder, llm_folder):
     """Aggregate TP, FP, FN over all patients and compute final metrics."""
     all_results = defaultdict(lambda: {'TP': 0, 'FP': 0, 'FN': 0})
     
-    manual_files = os.listdir(manual_folder)
-    llm_files = os.listdir(llm_folder)
+    llm_files = [f for f in os.listdir(llm_folder) if f.endswith('_pred.txt')]
 
-    for manual_file in manual_files:
-        if not manual_file.endswith('.txt'):
-            continue
-        patient_id = manual_file.split('.')[0]
-        llm_file = f"{patient_id}.txt"
+    for llm_file in llm_files:
+        patient_id = llm_file.replace('_pred.txt', '')
+        manual_file = f"{patient_id}_summary.txt"
         
-        if llm_file in llm_files:
-            manual_data = parse_summary_file(os.path.join(manual_folder, manual_file))
-            llm_data = parse_summary_file(os.path.join(llm_folder, llm_file))
+        manual_path = os.path.join(manual_folder, manual_file)
+        llm_path = os.path.join(llm_folder, llm_file)
+        
+        if os.path.exists(manual_path):
+            manual_data = parse_summary_file(manual_path)
+            llm_data = parse_summary_file(llm_path)
             
             patient_metrics = calculate_metrics(manual_data, llm_data)
             
@@ -103,15 +142,15 @@ def evaluate_folders(manual_folder, llm_folder):
     return avg_results
 
 if __name__ == "__main__":
-    manual_folder = "/home/lucia/Documents/Alban/MICCAI/Manual"
-    llm_folder = "/home/lucia/Documents/Alban/MICCAI/LLM/BART"
+    manual_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_output2"
+    llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_predict/qwen2p5_1p5b_full_predict"
     
     if not os.path.exists(manual_folder) or not os.path.exists(llm_folder):
         print("Error: Folders not found.")
     else:
         avg_metrics = evaluate_folders(manual_folder, llm_folder)
         
-        with open("extraction_metrics.json", "w") as f:
+        with open("extraction_metrics_full.json", "w") as f:
             json.dump(avg_metrics, f, indent=4)
         
-        print("Metrics saved to extraction_metrics.json")
+        print("Metrics saved to extraction_metrics_full.json")

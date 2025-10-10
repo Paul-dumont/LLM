@@ -9,7 +9,7 @@ from trl import SFTTrainer, SFTConfig
 
 # ==================== PARAMS ====================
 MODEL_ID    = "Qwen/Qwen2.5-1.5B-Instruct"
-MODEL_SHORT = "qwen2p5_1p5b_full"
+MODEL_SHORT = "qwen_full"
 
 # Valeurs par défaut sûres pour 44GB
 MAX_SEQ_LEN  = int(os.getenv("MAX_SEQ_LEN", 2048))
