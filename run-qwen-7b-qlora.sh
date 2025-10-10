@@ -2,8 +2,8 @@
 
 # ==================== SLURM JOB CONFIGURATION ====================
 #SBATCH --job-name=qlora
-#SBATCH --output=logs/qwen-7b-full-%j.out
-#SBATCH --error=logs/qwen-7b-full-%j.err
+#SBATCH --output=logs/qwen-7b-qlora-%j.out
+#SBATCH --error=logs/qwen-7b-qlora-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -82,10 +82,6 @@ echo "Test predictions: ${FULL_MAX_PREDICTIONS:-5}"
 echo "Seed: ${FULL_SEED:-42}"
 echo ""
 
-# ==================== ESTIMATION DU TEMPS ====================
-echo "⏰ Estimated runtime: 2-3 hours (500 files, 3000 tokens, 95.4% coverage)"
-echo "🎯 Starting full training script..."
-echo ""
 
 # ==================== LANCEMENT DU SCRIPT PRINCIPAL ====================
 python scripts/Qwen2.5-7B-qlora.py

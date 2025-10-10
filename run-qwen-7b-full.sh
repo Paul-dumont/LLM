@@ -2,8 +2,8 @@
 #
 # ==================== SLURM JOB CONFIG ====================
 #SBATCH --job-name=full
-#SBATCH --output=slurm-%x-%j.out
-#SBATCH --error=slurm-%x-%j.err
+#SBATCH --output=logs/qwen-7b-full-%j.out
+#SBATCH --error=logs/qwen-7b-full-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -48,7 +48,7 @@ conda activate ll-sft || { echo "conda env ll-sft introuvable"; exit 1; }
 # ==================== RÉGLAGES RUNTIME ====================
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_NO_ADVISORY_WARNINGS=1
-export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb=64"
+export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 export CUDA_LAUNCH_BLOCKING=0
 export NCCL_DEBUG=WARN
 
@@ -81,6 +81,9 @@ print("trl:", trl.__version__)
 if torch.cuda.is_available():
     print("device name:", torch.cuda.get_device_name(0))
 PY
+
+# ==================== CRÉATION DU DOSSIER DE LOGS ====================
+mkdir -p logs
 
 if command -v nvidia-smi &> /dev/null; then
   echo ""; echo "🖥️  GPU:"
