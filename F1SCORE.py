@@ -67,12 +67,17 @@ def parse_summary_file(file_path):
     data = {}
     with open(file_path, 'r') as f:
         for line in f:
+            line = line.strip()
             if '=' in line:
                 key, value = line.split('=', 1)
-                key = key.strip()
-                value = value.strip()
-                if key in CRITERIA:
-                    data[key] = value
+            elif ':' in line:
+                key, value = line.split(':', 1)
+            else:
+                continue
+            key = key.strip()
+            value = value.strip()
+            if key in CRITERIA:
+                data[key] = value
     return data
 
 def calculate_metrics(manual_data, llm_data):
@@ -143,7 +148,7 @@ def evaluate_folders(manual_folder, llm_folder):
 
 if __name__ == "__main__":
     manual_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_output2"
-    llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_predict/qwen2p5_1p5b_full_predict"
+    llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_predict/qwen_full_predict_3072"
     
     if not os.path.exists(manual_folder) or not os.path.exists(llm_folder):
         print("Error: Folders not found.")
@@ -154,3 +159,29 @@ if __name__ == "__main__":
             json.dump(avg_metrics, f, indent=4)
         
         print("Metrics saved to extraction_metrics_full.json")
+        
+        # Calculate and print F1 statistics
+        f1_scores = [v['F1'] for v in avg_metrics.values()]
+        if f1_scores:
+            avg_f1 = sum(f1_scores) / len(f1_scores)
+            sorted_f1 = sorted(f1_scores)
+            median_f1 = (sorted_f1[len(f1_scores)//2 - 1] + sorted_f1[len(f1_scores)//2]) / 2 if len(f1_scores) % 2 == 0 else sorted_f1[len(f1_scores)//2]
+            min_f1 = min(f1_scores)
+            max_f1 = max(f1_scores)
+            std_f1 = (sum((x - avg_f1)**2 for x in f1_scores) / len(f1_scores))**0.5
+            
+            print("\nStatistiques F1")
+            print(f"Average F1: {avg_f1:.4f} (moyenne globale)")
+            print(f"Median F1: {median_f1:.4f} (médiane)")
+            print(f"Min F1: {min_f1:.4f} (minimum, ex: certains champs non extraits)")
+            print(f"Max F1: {max_f1:.4f} (maximum, ex: patient_id parfait)")
+            print(f"Std Dev F1: {std_f1:.4f} (dispersion élevée, certains champs excellents, d'autres nuls)")
+            
+            # All F1 scores sorted by F1 descending
+            all_sorted = sorted(avg_metrics.items(), key=lambda x: x[1]['F1'], reverse=True)
+            
+            print("\nAll F1 Scores (sorted by F1 descending)")
+            for k, v in all_sorted:
+                print(f"{k}: {v['F1']:.4f}")
+        else:
+            print("No F1 scores to analyze.")

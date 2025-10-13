@@ -52,24 +52,6 @@ export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
 export CUDA_LAUNCH_BLOCKING=0
 export NCCL_DEBUG=WARN
 
-# ==================== VARIABLES POUR qwen_full_ft.py ====================
-# 0 = toutes les données
-export MAX_INPUTS="${MAX_INPUTS:-0}"
-export EVAL_RATIO="${EVAL_RATIO:-0.2}"
-export USE_WANDB="${USE_WANDB:-0}"   # 0=off, 1=on
-export SAVE_STEPS="${SAVE_STEPS:-200}"
-export EVAL_STEPS="${EVAL_STEPS:-200}"
-export LOG_STEPS="${LOG_STEPS:-50}"
-export NUM_EPOCHS="${NUM_EPOCHS:-3}"
-export BATCH_SIZE="${BATCH_SIZE:-1}" # per-device
-export GRAD_ACCUM="${GRAD_ACCUM:-8}"
-export LR="${LR:-2e-5}"
-export WEIGHT_DECAY="${WEIGHT_DECAY:-0.01}"
-export WARMUP_RATIO="${WARMUP_RATIO:-0.10}"
-export MAX_SEQ_LEN="${MAX_SEQ_LEN:-4096}"
-export MAX_PRED="${MAX_PRED:-5}"
-export SEED="${SEED:-42}"
-
 echo ""
 echo "🔍 Environment check"
 python - <<'PY'

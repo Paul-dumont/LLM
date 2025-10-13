@@ -1,0 +1,338 @@
+{
+    "patient_id": {
+        "Precision": 1.0,
+        "Recall": 1.0,
+        "Accuracy": 1.0,
+        "F1": 1.0
+    },
+    "patient_age": {
+        "Precision": 0.914,
+        "Recall": 0.914,
+        "Accuracy": 0.8416,
+        "F1": 0.914
+    },
+    "headache_intensity": {
+        "Precision": 0.558,
+        "Recall": 0.558,
+        "Accuracy": 0.387,
+        "F1": 0.558
+    },
+    "headache_frequency": {
+        "Precision": 0.684,
+        "Recall": 0.684,
+        "Accuracy": 0.5198,
+        "F1": 0.684
+    },
+    "headache_location": {
+        "Precision": 0.5731,
+        "Recall": 0.572,
+        "Accuracy": 0.4011,
+        "F1": 0.5726
+    },
+    "migraine_history": {
+        "Precision": 0.586,
+        "Recall": 0.586,
+        "Accuracy": 0.4144,
+        "F1": 0.586
+    },
+    "migraine_frequency": {
+        "Precision": 0.88,
+        "Recall": 0.8818,
+        "Accuracy": 0.7871,
+        "F1": 0.8809
+    },
+    "average_daily_pain_intensity": {
+        "Precision": 0.54,
+        "Recall": 0.54,
+        "Accuracy": 0.3699,
+        "F1": 0.54
+    },
+    "diet_score": {
+        "Precision": 0.858,
+        "Recall": 0.858,
+        "Accuracy": 0.7513,
+        "F1": 0.858
+    },
+    "tmj_pain_rating": {
+        "Precision": 0.512,
+        "Recall": 0.512,
+        "Accuracy": 0.3441,
+        "F1": 0.512
+    },
+    "disability_rating": {
+        "Precision": 0.8297,
+        "Recall": 0.828,
+        "Accuracy": 0.7077,
+        "F1": 0.8288
+    },
+    "jaw_function_score": {
+        "Precision": 0.8156,
+        "Recall": 0.814,
+        "Accuracy": 0.6875,
+        "F1": 0.8148
+    },
+    "jaw_clicking": {
+        "Precision": 0.592,
+        "Recall": 0.592,
+        "Accuracy": 0.4205,
+        "F1": 0.592
+    },
+    "jaw_crepitus": {
+        "Precision": 0.523,
+        "Recall": 0.522,
+        "Accuracy": 0.3537,
+        "F1": 0.5225
+    },
+    "jaw_locking": {
+        "Precision": 0.6994,
+        "Recall": 0.698,
+        "Accuracy": 0.5369,
+        "F1": 0.6987
+    },
+    "maximum_opening": {
+        "Precision": 0.898,
+        "Recall": 0.898,
+        "Accuracy": 0.8149,
+        "F1": 0.898
+    },
+    "maximum_opening_without_pain": {
+        "Precision": 0.9198,
+        "Recall": 0.918,
+        "Accuracy": 0.85,
+        "F1": 0.9189
+    },
+    "disc_displacement": {
+        "Precision": 0.408,
+        "Recall": 0.4088,
+        "Accuracy": 0.2566,
+        "F1": 0.4084
+    },
+    "muscle_pain_score": {
+        "Precision": 0.5972,
+        "Recall": 0.596,
+        "Accuracy": 0.4251,
+        "F1": 0.5966
+    },
+    "muscle_pain_location": {
+        "Precision": 0.4237,
+        "Recall": 0.422,
+        "Accuracy": 0.2681,
+        "F1": 0.4228
+    },
+    "muscle_spasm_present": {
+        "Precision": 0.564,
+        "Recall": 0.564,
+        "Accuracy": 0.3928,
+        "F1": 0.564
+    },
+    "muscle_tenderness_present": {
+        "Precision": 0.6433,
+        "Recall": 0.642,
+        "Accuracy": 0.4735,
+        "F1": 0.6426
+    },
+    "muscle_stiffness_present": {
+        "Precision": 0.5772,
+        "Recall": 0.576,
+        "Accuracy": 0.4051,
+        "F1": 0.5766
+    },
+    "muscle_soreness_present": {
+        "Precision": 0.5731,
+        "Recall": 0.572,
+        "Accuracy": 0.4011,
+        "F1": 0.5726
+    },
+    "joint_pain_areas": {
+        "Precision": 0.2485,
+        "Recall": 0.248,
+        "Accuracy": 0.1417,
+        "F1": 0.2482
+    },
+    "joint_arthritis_location": {
+        "Precision": 0.3768,
+        "Recall": 0.376,
+        "Accuracy": 0.2318,
+        "F1": 0.3764
+    },
+    "neck_pain_present": {
+        "Precision": 0.7535,
+        "Recall": 0.752,
+        "Accuracy": 0.6035,
+        "F1": 0.7528
+    },
+    "back_pain_present": {
+        "Precision": 0.7756,
+        "Recall": 0.774,
+        "Accuracy": 0.6324,
+        "F1": 0.7748
+    },
+    "earache_present": {
+        "Precision": 0.7134,
+        "Recall": 0.712,
+        "Accuracy": 0.5537,
+        "F1": 0.7127
+    },
+    "tinnitus_present": {
+        "Precision": 0.8072,
+        "Recall": 0.804,
+        "Accuracy": 0.6745,
+        "F1": 0.8056
+    },
+    "vertigo_present": {
+        "Precision": 0.7916,
+        "Recall": 0.79,
+        "Accuracy": 0.654,
+        "F1": 0.7908
+    },
+    "hearing_loss_present": {
+        "Precision": 0.7816,
+        "Recall": 0.78,
+        "Accuracy": 0.6404,
+        "F1": 0.7808
+    },
+    "hearing_sensitivity_present": {
+        "Precision": 0.7796,
+        "Recall": 0.778,
+        "Accuracy": 0.6377,
+        "F1": 0.7788
+    },
+    "sleep_apnea_diagnosed": {
+        "Precision": 0.8196,
+        "Recall": 0.818,
+        "Accuracy": 0.6932,
+        "F1": 0.8188
+    },
+    "sleep_disorder_type": {
+        "Precision": 0.5241,
+        "Recall": 0.523,
+        "Accuracy": 0.3546,
+        "F1": 0.5236
+    },
+    "airway_obstruction_present": {
+        "Precision": 0.6894,
+        "Recall": 0.688,
+        "Accuracy": 0.5252,
+        "F1": 0.6887
+    },
+    "anxiety_present": {
+        "Precision": 0.6934,
+        "Recall": 0.692,
+        "Accuracy": 0.5299,
+        "F1": 0.6927
+    },
+    "depression_present": {
+        "Precision": 0.6874,
+        "Recall": 0.686,
+        "Accuracy": 0.5229,
+        "F1": 0.6867
+    },
+    "stress_present": {
+        "Precision": 0.684,
+        "Recall": 0.684,
+        "Accuracy": 0.5198,
+        "F1": 0.684
+    },
+    "autoimmune_condition": {
+        "Precision": 0.572,
+        "Recall": 0.572,
+        "Accuracy": 0.4006,
+        "F1": 0.572
+    },
+    "fibromyalgia_present": {
+        "Precision": 0.7183,
+        "Recall": 0.714,
+        "Accuracy": 0.5578,
+        "F1": 0.7161
+    },
+    "current_medications": {
+        "Precision": 0.502,
+        "Recall": 0.502,
+        "Accuracy": 0.3351,
+        "F1": 0.502
+    },
+    "previous_medications": {
+        "Precision": 0.6064,
+        "Recall": 0.6064,
+        "Accuracy": 0.4352,
+        "F1": 0.6064
+    },
+    "adverse_reactions": {
+        "Precision": 0.7349,
+        "Recall": 0.7364,
+        "Accuracy": 0.5819,
+        "F1": 0.7357
+    },
+    "appliance_history": {
+        "Precision": 0.2837,
+        "Recall": 0.2854,
+        "Accuracy": 0.1659,
+        "F1": 0.2846
+    },
+    "current_appliance": {
+        "Precision": 0.5662,
+        "Recall": 0.5673,
+        "Accuracy": 0.3954,
+        "F1": 0.5668
+    },
+    "cpap_used": {
+        "Precision": 0.7047,
+        "Recall": 0.7047,
+        "Accuracy": 0.544,
+        "F1": 0.7047
+    },
+    "apap_used": {
+        "Precision": 0.7157,
+        "Recall": 0.7172,
+        "Accuracy": 0.5582,
+        "F1": 0.7165
+    },
+    "bipap_used": {
+        "Precision": 0.7157,
+        "Recall": 0.7231,
+        "Accuracy": 0.5618,
+        "F1": 0.7194
+    },
+    "physical_therapy_status": {
+        "Precision": 0.7346,
+        "Recall": 0.7438,
+        "Accuracy": 0.5862,
+        "F1": 0.7391
+    },
+    "pain_onset_date": {
+        "Precision": 0.5673,
+        "Recall": 0.5744,
+        "Accuracy": 0.3994,
+        "F1": 0.5708
+    },
+    "pain_duration": {
+        "Precision": 0.8246,
+        "Recall": 0.8422,
+        "Accuracy": 0.7143,
+        "F1": 0.8333
+    },
+    "pain_frequency": {
+        "Precision": 0.68,
+        "Recall": 0.6916,
+        "Accuracy": 0.5218,
+        "F1": 0.6858
+    },
+    "onset_triggers": {
+        "Precision": 0.7167,
+        "Recall": 0.7386,
+        "Accuracy": 0.5717,
+        "F1": 0.7275
+    },
+    "pain_relieving_factors": {
+        "Precision": 0.8831,
+        "Recall": 0.9007,
+        "Accuracy": 0.8047,
+        "F1": 0.8918
+    },
+    "pain_aggravating_factors": {
+        "Precision": 0.7434,
+        "Recall": 0.7636,
+        "Accuracy": 0.6043,
+        "F1": 0.7534
+    }
+}

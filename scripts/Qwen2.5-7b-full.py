@@ -11,10 +11,10 @@ from trl import SFTTrainer, SFTConfig
 MODEL_ID    = "Qwen/Qwen2.5-1.5B-Instruct"
 MODEL_SHORT = "qwen_full"
 
-# Valeurs par défaut sûres pour 44GB
-MAX_SEQ_LEN  = int(os.getenv("MAX_SEQ_LEN", 2048))
-NUM_EPOCHS   = int(os.getenv("NUM_EPOCHS", 3))
-BATCH_SIZE   = int(os.getenv("BATCH_SIZE", 2))        # per-device
+# Valeurs par défaut sûres pour 44GB NUM_EPOCHS = 5 LR = 5e-6 2048-3072
+MAX_SEQ_LEN  = int(os.getenv("MAX_SEQ_LEN", 4096))
+NUM_EPOCHS   = int(os.getenv("NUM_EPOCHS", 5))
+BATCH_SIZE   = int(os.getenv("BATCH_SIZE", 1))        # per-device
 GRAD_ACCUM   = int(os.getenv("GRAD_ACCUM", 8))
 LR           = float(os.getenv("LR", "2e-5"))
 WEIGHT_DECAY = float(os.getenv("WEIGHT_DECAY", "0.01"))
