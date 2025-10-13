@@ -32,8 +32,8 @@ if torch.cuda.is_available():
 
 # ==================== CONFIGURATION DES RÉPERTOIRES ====================
 BASE_DIR = Path(__file__).parent.parent
-DATA_INPUT = BASE_DIR / "Data_input"
-RUNS_DIR = BASE_DIR / "runs"
+DATA_INPUT = BASE_DIR / "DATA_TRAINING" / "Data_input"
+RUNS_DIR = BASE_DIR / "Qwen1.5B_full" / "model"
 
 print(f"🏠 BASE_DIR: {BASE_DIR}")
 print(f"📥 DATA_INPUT: {DATA_INPUT}")
@@ -108,7 +108,7 @@ eval_pairs = pairs[:MAX_PREDICTIONS]
 print(f"📊 Will generate predictions for {len(eval_pairs)} notes")
 
 # ==================== GÉNÉRATION DES PRÉDICTIONS ====================
-PREDICT_DIR = BASE_DIR / "Data_predict" / f"{MODEL_SHORT}_predict_full"
+PREDICT_DIR = Path(__file__).parent.parent / "Qwen1.5B_full" / "predictions_500"
 PREDICT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Nettoyage des prédictions précédentes

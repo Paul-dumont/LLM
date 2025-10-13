@@ -3,8 +3,8 @@ import json
 from rouge_score import rouge_scorer, scoring
 
 # Paths
-manual_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_output2"
-llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_predict/qwen_full_predict_2048"
+manual_folder = "/nas/longleaf/home/dumontp/LONGLEAF/DATA_TRAINING/Data_output2"
+llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Qwen1.5B_full/predictions_500"
 
 if not os.path.exists(manual_folder) or not os.path.exists(llm_folder):
     print("Error: Folders not found.")
@@ -45,7 +45,9 @@ for key, value in rouge_scores.items():
     print(f"{key}: {value:.4f}")
 
 # Save to file
-with open("rouge_scores_predict_500.json", "w") as f:
+os.makedirs("Qwen1.5B_full/metrics", exist_ok=True)
+with open("Qwen1.5B_full/metrics/rouge.json", "w") as f:
     json.dump(rouge_scores, f, indent=4)
 
-print("Scores saved to rouge_scores_predict_500.json")
+print("Scores saved to Qwen1.5B_full/metrics/rouge.json")
+

@@ -1,9 +1,9 @@
 #!/bin/bash
 #
 # ==================== SLURM JOB CONFIG ====================
-#SBATCH --job-name=full
-#SBATCH --output=logs/qwen-7b-full-%j.out
-#SBATCH --error=logs/qwen-7b-full-%j.err
+#SBATCH --job-name=qwenV2
+#SBATCH --output=Qwen1.5B_full_V2/logs/qwen-7b-full-%j.out
+#SBATCH --error=Qwen1.5B_full_V2/logs/qwen-7b-full-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -65,7 +65,7 @@ if torch.cuda.is_available():
 PY
 
 # ==================== CRÉATION DU DOSSIER DE LOGS ====================
-mkdir -p logs
+mkdir -p Qwen1.5B_full_V2/logs
 
 if command -v nvidia-smi &> /dev/null; then
   echo ""; echo "🖥️  GPU:"
@@ -74,7 +74,7 @@ fi
 
 # ==================== LANCEMENT ====================
 # Adapte le chemin si ton fichier est ailleurs
-SCRIPT="scripts/Qwen2.5-7b-full.py"
+SCRIPT="Qwen1.5B_full_V2/Qwen2.5-1.5B-full-V2.py"
 
 echo ""
 echo "🚀 Launching: $SCRIPT"

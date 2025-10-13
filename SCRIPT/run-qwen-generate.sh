@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # ==================== SLURM JOB CONFIGURATION ====================
-#SBATCH --job-name=qlora
-#SBATCH --output=logs/qwen-7b-qlora-%j.out
-#SBATCH --error=logs/qwen-7b-qlora-%j.err
+#SBATCH --job-name=gen3072
+#SBATCH --output=SCRIPT/logs/qwen-generate-%j.out
+#SBATCH --error=SCRIPT/logs/qwen-generate-%j.err
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=64G
-#SBATCH --time=03:00:00
+#SBATCH --mem=32G
+#SBATCH --time=07:00:00
 #SBATCH --partition=l40-gpu
 #SBATCH --qos=gpu_access
 #SBATCH --gres=gpu:1
@@ -18,16 +18,11 @@
 #SBATCH --exclude=g181005
 
 # ==================== VARIABLES D'ENVIRONNEMENT ====================
-# Configuration de l'entraînement complet
-export FULL_MAX_INPUTS=${FULL_MAX_INPUTS:-0}           # 0 = utiliser toutes les données
-export FULL_EVAL_RATIO=${FULL_EVAL_RATIO:-0.2}         # 20% pour l'évaluation
-export FULL_USE_WANDB=${FULL_USE_WANDB:-0}              # Weights & Biases logging
-export FULL_SAVE_FINAL=${FULL_SAVE_FINAL:-1}           # Sauvegarder le modèle final
-export FULL_MAX_PREDICTIONS=${FULL_MAX_PREDICTIONS:-5}  # Prédictions test après entraînement
-export FULL_SEED=${FULL_SEED:-42}                      # Seed pour reproductibilité
+# Configuration de la génération
+export PRED_MAX_NEW_TOKENS=${PRED_MAX_NEW_TOKENS:-500}  # Tokens de sortie (500 vs 200 original)
 
 # ==================== INFORMATION SYSTÈME ====================
-echo "🚀 FULL TRAINING: Qwen2.5-7B-Instruct"
+echo "🧪 GENERATION: Qwen2.5-7B-Instruct (500 tokens)"
 echo "================================================="
 echo "Node: $(hostname)"
 echo "Job ID: $SLURM_JOB_ID"
@@ -69,22 +64,32 @@ else
 fi
 
 # ==================== CRÉATION DU DOSSIER DE LOGS ====================
-mkdir -p logs
+mkdir -p SCRIPT/logs
 
-# ==================== CONFIGURATION DE L'ENTRAÎNEMENT ====================
+# ==================== CONFIGURATION DE LA GÉNÉRATION ====================
 echo ""
-echo "⚙️  Training Configuration:"
-echo "Max inputs: ${FULL_MAX_INPUTS:-ALL}"
-echo "Eval ratio: ${FULL_EVAL_RATIO:-0.2}"
-echo "Use W&B: ${FULL_USE_WANDB:-0}"
-echo "Save final: ${FULL_SAVE_FINAL:-1}"
-echo "Test predictions: ${FULL_MAX_PREDICTIONS:-5}"
-echo "Seed: ${FULL_SEED:-42}"
+echo "⚙️  Generation Configuration:"
+echo "Max new tokens: ${PRED_MAX_NEW_TOKENS:-500}"
+echo "Model source: Auto-detect latest run"
+echo "Input source: DATA_TRAINING/Data_input"
+echo "Output target: Qwen1.5B_full/predictions_500"
 echo ""
 
+# ==================== STATUS AVANT GÉNÉRATION ====================
+echo "📊 Current prediction status:"
+echo "Predictions: $(ls Qwen1.5B_full/predictions_500/ 2>/dev/null | wc -l || echo '0')"
+echo ""
+echo "📁 Available model runs:"
+ls -1t Qwen1.5B_full/model/ | head -3
+echo ""
+
+# ==================== ESTIMATION DU TEMPS ====================
+echo "⏰ Estimated runtime: 10-15 minutes (5 predictions, inference only)"
+echo "🎯 Starting generation script..."
+echo ""
 
 # ==================== LANCEMENT DU SCRIPT PRINCIPAL ====================
-python scripts/Qwen2.5-7B-qlora.py
+python SCRIPT/qwen-generate.py
 
 # ==================== CAPTURE DU CODE DE RETOUR ====================
 exit_code=$?
@@ -96,17 +101,20 @@ echo "End time: $(date)"
 echo "Exit code: $exit_code"
 
 if [ $exit_code -eq 0 ]; then
-    echo "✅ Full training completed successfully!"
+    echo "✅ Generation completed successfully!"
     
-    # Afficher la taille du dossier de sauvegarde si il existe
-    if [ -d "runs" ]; then
+    # Afficher les résultats
+    if [ -d "Qwen1.5B_full/predictions_500" ]; then
         echo ""
-        echo "📁 Training outputs:"
-        find runs -name "Qwen2.5-7B-full_*" -type d -exec sh -c 'echo "  $(du -sh "$1" | cut -f1) - $1"' _ {} \; | tail -5
+        echo "📁 Generated predictions:"
+        ls -la Qwen1.5B_full/predictions_500/
+        echo ""
+        echo "📝 Preview of first prediction:"
+        head -5 Qwen1.5B_full/predictions_500/*.txt | head -10
     fi
     
 else
-    echo "❌ Full training failed with exit code: $exit_code"
+    echo "❌ Generation failed with exit code: $exit_code"
 fi
 
 echo ""

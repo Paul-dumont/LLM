@@ -1,10 +1,13 @@
 # Données et sorties
-Data_input/
-Data_output/
-Data_output2/
-Data_predict/
-runs/
-logs/
+DATA_TRAINING/Data_input/
+DATA_TRAINING/Data_output/
+DATA_TRAINING/Data_output2/
+Qwen1.5B_full/predictions/
+Qwen1.5B_full/predictions_500/
+Qwen1.5B_full/model/
+Qwen1.5B_full/logs/
+Qwen1.5B_full/metrics/
+SCRIPT/logs/
 
 # Cache et fichiers temporaires
 .cache/

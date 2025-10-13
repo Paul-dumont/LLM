@@ -147,18 +147,20 @@ def evaluate_folders(manual_folder, llm_folder):
     return avg_results
 
 if __name__ == "__main__":
-    manual_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_output2"
-    llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Data_predict/qwen_full_predict_3072"
+    manual_folder = "/nas/longleaf/home/dumontp/LONGLEAF/DATA_TRAINING/Data_output2"
+    llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Qwen1.5B_full/predictions_500"
     
     if not os.path.exists(manual_folder) or not os.path.exists(llm_folder):
         print("Error: Folders not found.")
     else:
         avg_metrics = evaluate_folders(manual_folder, llm_folder)
         
-        with open("extraction_metrics_full.json", "w") as f:
+        os.makedirs("Qwen1.5B_full/metrics", exist_ok=True)
+        
+        with open("Qwen1.5B_full/metrics/F1score.json", "w") as f:
             json.dump(avg_metrics, f, indent=4)
         
-        print("Metrics saved to extraction_metrics_full.json")
+        print("Metrics saved to Qwen1.5B_full/F1score.json")
         
         # Calculate and print F1 statistics
         f1_scores = [v['F1'] for v in avg_metrics.values()]

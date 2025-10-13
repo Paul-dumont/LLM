@@ -5,18 +5,17 @@ import os, re, time, json, random
 import torch
 from datasets import Dataset, DatasetDict
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from trl import SFTTrainer, SFTConfig
+from trl import SFTTrainer, SFTConfig, DataCollatorForCompletionOnlyLM
 
 # ==================== PARAMS ====================
 MODEL_ID    = "Qwen/Qwen2.5-1.5B-Instruct"
 MODEL_SHORT = "qwen_full"
 
-# Valeurs par défaut sûres pour 44GB NUM_EPOCHS = 5 LR = 5e-6 2048-3072
-MAX_SEQ_LEN  = int(os.getenv("MAX_SEQ_LEN", 4096))
+MAX_SEQ_LEN  = int(os.getenv("MAX_SEQ_LEN", 4096))   # 3072/2048 si VRAM juste
 NUM_EPOCHS   = int(os.getenv("NUM_EPOCHS", 5))
-BATCH_SIZE   = int(os.getenv("BATCH_SIZE", 1))        # per-device
+BATCH_SIZE   = int(os.getenv("BATCH_SIZE", 1))       # per-device
 GRAD_ACCUM   = int(os.getenv("GRAD_ACCUM", 8))
-LR           = float(os.getenv("LR", "2e-5"))
+LR           = float(os.getenv("LR", "5e-6"))
 WEIGHT_DECAY = float(os.getenv("WEIGHT_DECAY", "0.01"))
 WARMUP_RATIO = float(os.getenv("WARMUP_RATIO", "0.10"))
 SAVE_STEPS   = int(os.getenv("SAVE_STEPS", 200))
@@ -24,16 +23,16 @@ EVAL_STEPS   = int(os.getenv("EVAL_STEPS", 200))
 LOG_STEPS    = int(os.getenv("LOG_STEPS", 50))
 USE_WANDB    = os.getenv("USE_WANDB", "0") == "1"
 EVAL_RATIO   = float(os.getenv("EVAL_RATIO", "0.2"))
-MAX_INPUTS   = int(os.getenv("MAX_INPUTS", "0"))      # 0 = all
+MAX_INPUTS   = int(os.getenv("MAX_INPUTS", "0"))     # 0 = all
 MAX_PRED     = int(os.getenv("MAX_PRED", "5"))
 SEED         = int(os.getenv("SEED", "42"))
+OPTIM        = os.getenv("OPTIM", "adamw_bnb_8bit")  # "adamw_bnb_8bit" (si bnb) ou "adamw_torch"
 
 random.seed(SEED)
 torch.manual_seed(SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
 
-# Adapte à ton arborescence (ici: script dans <repo>/scripts/, data dans <repo>/Data_input)
 BASE_DIR    = Path(__file__).parent.parent
 DATA_INPUT  = BASE_DIR / "Data_input"
 DATA_OUTPUT = BASE_DIR / "Data_output2"
@@ -44,7 +43,6 @@ INSTRUCTION = "Using the following note, extract structured key-value pairs abou
 
 # ==================== UTILS ====================
 def get_id(name: str):
-    # Extrait un identifiant commun (ex: B1234) du nom de fichier
     m = re.match(r"(B\d+)", name)
     return m.group(1) if m else None
 
@@ -88,6 +86,8 @@ def load_data(tok):
 
         note   = inp_file.read_text(encoding="utf-8").strip()
         target = id2out[cid].read_text(encoding="utf-8").strip()
+        if not note or not target:
+            continue
 
         messages = [
             {"role": "system",    "content": INSTRUCTION},
@@ -117,22 +117,40 @@ def load_model(tok):
     print("🤖 Loading base model for full finetune (bf16)…")
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,             # <- nouvelle API
         trust_remote_code=True,
-        attn_implementation="sdpa",   # OK sans FA2; FA2 si installé
+        attn_implementation="sdpa",
     )
     model.config.pad_token_id = tok.pad_token_id
     model.config.eos_token_id = tok.eos_token_id
     model.config.use_cache = False  # disable during training
-    # memory helpers
+
+    # génération déterministe par défaut
+    model.generation_config.temperature = 0.0
+    model.generation_config.top_p = 1.0
+    model.generation_config.do_sample = False
+
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
     if torch.cuda.is_available():
         model = model.to("cuda")
     return model
 
+# ---- Loss uniquement sur la réponse assistant ----
+def build_collator(tok):
+    assistant_prefix = tok.apply_chat_template(
+        [{"role": "assistant", "content": ""}],
+        tokenize=False,
+        add_generation_prompt=False,
+    ).lstrip()
+    return DataCollatorForCompletionOnlyLM(
+        response_template=assistant_prefix,
+        tokenizer=tok,
+    )
+
 def sft_config():
     report_to = ["wandb"] if USE_WANDB else []
+    # TRL ancien: utilise 'eval_strategy', pas 'evaluation_strategy'
     return SFTConfig(
         output_dir=str(RUN_DIR),
         logging_dir=str(RUN_DIR / "logs"),
@@ -144,17 +162,17 @@ def sft_config():
         weight_decay=WEIGHT_DECAY,
         warmup_ratio=WARMUP_RATIO,
         lr_scheduler_type="cosine",
-        max_grad_norm=1.0,
-        eval_strategy="steps",     # <- corrige "eval_strategy"
+        max_grad_norm=0.5,               # clip un peu plus agressif -> stabilité
+        eval_strategy="steps",            # <<< compat TRL (pas 'evaluation_strategy')
         eval_steps=EVAL_STEPS,
         logging_strategy="steps",
         logging_steps=LOG_STEPS,
         save_strategy="steps",
         save_steps=SAVE_STEPS,
         save_total_limit=1,
-        load_best_model_at_end=False,    # évite un 2e chargement en mémoire
+        load_best_model_at_end=False,
         fp16=False,
-        bf16=True,                       # A100/L40S : OK
+        bf16=True,
         gradient_checkpointing=True,
         dataloader_pin_memory=True,
         dataloader_num_workers=0,
@@ -163,19 +181,20 @@ def sft_config():
         dataset_text_field="text",
         report_to=report_to,
         run_name=f"{MODEL_SHORT}_{int(time.time())}" if USE_WANDB else None,
-        # Optimiseur VRAM-friendly
-        optim="adafactor",
-        adam_epsilon=1e-8,
+        optim=OPTIM,                      # adamw_bnb_8bit (ou adamw_torch)
+        # NOTE: ta version TRL n'accepte pas predict_with_generate/generation_max_length
     )
 
 def train_and_eval(model, tok, dset, cfg):
     print("🏋️ Training…")
+    collator = build_collator(tok)
     trainer = SFTTrainer(
         model=model,
         args=cfg,
         train_dataset=dset["train"],
         eval_dataset=dset["eval"],
         tokenizer=tok,
+        data_collator=collator,   # << loss seulement sur la réponse assistant
     )
     tr = trainer.train()
     print("✅ Training finished")
@@ -187,7 +206,7 @@ def train_and_eval(model, tok, dset, cfg):
     (RUN_DIR / "training_results.json").write_text(json.dumps(results, indent=2))
     print(f"📄 Saved: {RUN_DIR/'training_results.json'}")
 
-    print("🧪 Evaluating best model…")
+    print("🧪 Evaluating…")
     ev = trainer.evaluate()
     (RUN_DIR / "eval_results.json").write_text(json.dumps(ev, indent=2))
     print(f"📄 Saved: {RUN_DIR/'eval_results.json'}")
@@ -195,7 +214,7 @@ def train_and_eval(model, tok, dset, cfg):
 
 def save_final(trainer, tok):
     out = RUN_DIR / "final_model"
-    out.mkdir(exist_ok=True, parents=True)
+    out.mkdir(parents=True, exist_ok=True)
     print("💾 Saving final model/tokenizer…")
     trainer.model.save_pretrained(str(out))
     tok.save_pretrained(str(out))
@@ -217,7 +236,7 @@ def predict_samples(trainer, tok, eval_pairs, render):
         device=0 if torch.cuda.is_available() else -1,
         return_full_text=False,
         pad_token_id=tok.pad_token_id or tok.eos_token_id,
-        torch_dtype=torch.bfloat16,
+        # on peut omettre dtype ici; sinon: dtype=torch.bfloat16
     )
 
     for i, pair in enumerate(eval_pairs[:MAX_PRED], 1):
@@ -253,6 +272,7 @@ def main():
                 "lr": LR,
                 "weight_decay": WEIGHT_DECAY,
                 "warmup_ratio": WARMUP_RATIO,
+                "optim": OPTIM,
                 "sizes": {
                     "total_pairs": len(pairs),
                     "train": len(train_pairs),
