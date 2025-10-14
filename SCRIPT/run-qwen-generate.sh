@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==================== SLURM JOB CONFIGURATION ====================
-#SBATCH --job-name=gen3072
+#SBATCH --job-name=gen
 #SBATCH --output=SCRIPT/logs/qwen-generate-%j.out
 #SBATCH --error=SCRIPT/logs/qwen-generate-%j.err
 #SBATCH --nodes=1

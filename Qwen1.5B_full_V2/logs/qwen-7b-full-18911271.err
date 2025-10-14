@@ -1,9 +1,0 @@
-`torch_dtype` is deprecated! Use `dtype` instead!
-Traceback (most recent call last):
-  File "/nas/longleaf/home/dumontp/LONGLEAF/Qwen1.5B_full_V2/Qwen2.5-1.5B-full-V2.py", line 300, in <module>
-    main()
-  File "/nas/longleaf/home/dumontp/LONGLEAF/Qwen1.5B_full_V2/Qwen2.5-1.5B-full-V2.py", line 269, in main
-    cfg = sft_config()
-  File "/nas/longleaf/home/dumontp/LONGLEAF/Qwen1.5B_full_V2/Qwen2.5-1.5B-full-V2.py", line 158, in sft_config
-    return SFTConfig(
-TypeError: SFTConfig.__init__() got an unexpected keyword argument 'evaluation_strategy'

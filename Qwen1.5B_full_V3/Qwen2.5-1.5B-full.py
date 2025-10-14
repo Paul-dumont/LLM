@@ -5,15 +5,16 @@ import os, re, time, json, random
 import torch
 from datasets import Dataset, DatasetDict
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from trl import SFTTrainer, SFTConfig, DataCollatorForCompletionOnlyLM
+from trl import SFTTrainer, SFTConfig
 
 # ==================== PARAMS ====================
 MODEL_ID    = "Qwen/Qwen2.5-1.5B-Instruct"
-MODEL_SHORT = "qwen_V2"
+MODEL_SHORT = "qwen_full_V3"
 
-MAX_SEQ_LEN  = int(os.getenv("MAX_SEQ_LEN", 3072))   # 2048 pour réduire la charge GPU
-NUM_EPOCHS   = int(os.getenv("NUM_EPOCHS", 5))
-BATCH_SIZE   = int(os.getenv("BATCH_SIZE", 1))       # per-device
+# Valeurs par défaut sûres pour 44GB NUM_EPOCHS = 5 LR = 5e-6 2048-3072
+MAX_SEQ_LEN  = int(os.getenv("MAX_SEQ_LEN", 4096))
+NUM_EPOCHS   = int(os.getenv("NUM_EPOCHS", 3))
+BATCH_SIZE   = int(os.getenv("BATCH_SIZE", 1))        # per-device
 GRAD_ACCUM   = int(os.getenv("GRAD_ACCUM", 8))
 LR           = float(os.getenv("LR", "2e-5"))
 WEIGHT_DECAY = float(os.getenv("WEIGHT_DECAY", "0.01"))
@@ -23,27 +24,27 @@ EVAL_STEPS   = int(os.getenv("EVAL_STEPS", 200))
 LOG_STEPS    = int(os.getenv("LOG_STEPS", 50))
 USE_WANDB    = os.getenv("USE_WANDB", "0") == "1"
 EVAL_RATIO   = float(os.getenv("EVAL_RATIO", "0.2"))
-MAX_INPUTS   = int(os.getenv("MAX_INPUTS", "0"))     # 0 = all
+MAX_INPUTS   = int(os.getenv("MAX_INPUTS", "0"))      # 0 = all
 MAX_PRED     = int(os.getenv("MAX_PRED", "5"))
 SEED         = int(os.getenv("SEED", "42"))
-OPTIM        = os.getenv("OPTIM", "adamw_bnb_8bit")  # "adamw_bnb_8bit" (si bnb) ou "adamw_torch"
 
 random.seed(SEED)
 torch.manual_seed(SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
 
+# Adapte à ton arborescence (ici: script dans <repo>/scripts/, data dans <repo>/Data_input)
 BASE_DIR    = Path(__file__).parent.parent
 DATA_INPUT  = BASE_DIR / "DATA_TRAINING" / "Data_input"
 DATA_OUTPUT = BASE_DIR / "DATA_TRAINING" / "Data_output2"
 RUN_DIR     = Path(__file__).parent / "model" / f"{MODEL_SHORT}_{time.strftime('%Y%m%d_%H%M%S')}_{os.getenv('SLURM_JOB_ID', 'local')}"
-RUN_DIR.mkdir(parents=True, exist_ok=True)
 RUN_DIR.mkdir(parents=True, exist_ok=True)
 
 INSTRUCTION = "Using the following note, extract structured key-value pairs about the patient's symptoms and diagnoses:"
 
 # ==================== UTILS ====================
 def get_id(name: str):
+    # Extrait un identifiant commun (ex: B1234) du nom de fichier
     m = re.match(r"(B\d+)", name)
     return m.group(1) if m else None
 
@@ -87,8 +88,6 @@ def load_data(tok):
 
         note   = inp_file.read_text(encoding="utf-8").strip()
         target = id2out[cid].read_text(encoding="utf-8").strip()
-        if not note or not target:
-            continue
 
         messages = [
             {"role": "system",    "content": INSTRUCTION},
@@ -107,7 +106,6 @@ def load_data(tok):
 def make_datasets(train_pairs, eval_pairs, render):
     train_texts = [render(p["messages"], add_generation_prompt=False) for p in train_pairs]
     eval_texts  = [render(p["messages"], add_generation_prompt=False) for p in eval_pairs]
-    # (print supprimé pour éviter d'afficher input/output dans les logs)
     dset = DatasetDict({
         "train": Dataset.from_list([{"text": t} for t in train_texts]),
         "eval":  Dataset.from_list([{"text": t} for t in eval_texts]),
@@ -119,37 +117,22 @@ def load_model(tok):
     print("🤖 Loading base model for full finetune (bf16)…")
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID,
-        dtype=torch.bfloat16,             # <- nouvelle API
+        torch_dtype=torch.bfloat16,
         trust_remote_code=True,
-        attn_implementation="sdpa",
+        attn_implementation="sdpa",   # OK sans FA2; FA2 si installé
     )
     model.config.pad_token_id = tok.pad_token_id
     model.config.eos_token_id = tok.eos_token_id
     model.config.use_cache = False  # disable during training
-
-    # génération déterministe par défaut
-    model.generation_config.temperature = None
-    model.generation_config.top_p = 1.0
-    model.generation_config.top_k = None
-    model.generation_config.do_sample = False
-
+    # memory helpers
     model.gradient_checkpointing_enable()
     model.enable_input_require_grads()
     if torch.cuda.is_available():
         model = model.to("cuda")
     return model
 
-# ---- Loss uniquement sur la réponse assistant ----
-def build_collator(tok):
-    response_template = "patient_id="
-    return DataCollatorForCompletionOnlyLM(
-        response_template=response_template,
-        tokenizer=tok,
-    )
-
 def sft_config():
     report_to = ["wandb"] if USE_WANDB else []
-    # TRL ancien: utilise 'eval_strategy', pas 'evaluation_strategy'
     return SFTConfig(
         output_dir=str(RUN_DIR),
         logging_dir=str(RUN_DIR / "logs"),
@@ -161,17 +144,17 @@ def sft_config():
         weight_decay=WEIGHT_DECAY,
         warmup_ratio=WARMUP_RATIO,
         lr_scheduler_type="cosine",
-        max_grad_norm=0.5,               # clip un peu plus agressif -> stabilité
-        eval_strategy="steps",            # <<< compat TRL (pas 'evaluation_strategy')
+        max_grad_norm=1.0,
+        eval_strategy="steps",     # <- corrige "eval_strategy"
         eval_steps=EVAL_STEPS,
         logging_strategy="steps",
         logging_steps=LOG_STEPS,
         save_strategy="steps",
         save_steps=SAVE_STEPS,
         save_total_limit=1,
-        load_best_model_at_end=False,
+        load_best_model_at_end=False,    # évite un 2e chargement en mémoire
         fp16=False,
-        bf16=True,
+        bf16=True,                       # A100/L40S : OK
         gradient_checkpointing=True,
         dataloader_pin_memory=True,
         dataloader_num_workers=0,
@@ -180,20 +163,19 @@ def sft_config():
         dataset_text_field="text",
         report_to=report_to,
         run_name=f"{MODEL_SHORT}_{int(time.time())}" if USE_WANDB else None,
-        optim=OPTIM,                      # adamw_bnb_8bit (ou adamw_torch)
-        # NOTE: ta version TRL n'accepte pas predict_with_generate/generation_max_length
+        # Optimiseur VRAM-friendly
+        optim="adafactor",
+        adam_epsilon=1e-8,
     )
 
 def train_and_eval(model, tok, dset, cfg):
     print("🏋️ Training…")
-    collator = build_collator(tok)
     trainer = SFTTrainer(
         model=model,
         args=cfg,
         train_dataset=dset["train"],
         eval_dataset=dset["eval"],
         tokenizer=tok,
-        data_collator=collator,   # << loss seulement sur la réponse assistant
     )
     tr = trainer.train()
     print("✅ Training finished")
@@ -205,7 +187,7 @@ def train_and_eval(model, tok, dset, cfg):
     (RUN_DIR / "training_results.json").write_text(json.dumps(results, indent=2))
     print(f"📄 Saved: {RUN_DIR/'training_results.json'}")
 
-    print("🧪 Evaluating…")
+    print("🧪 Evaluating best model…")
     ev = trainer.evaluate()
     (RUN_DIR / "eval_results.json").write_text(json.dumps(ev, indent=2))
     print(f"📄 Saved: {RUN_DIR/'eval_results.json'}")
@@ -213,7 +195,7 @@ def train_and_eval(model, tok, dset, cfg):
 
 def save_final(trainer, tok):
     out = RUN_DIR / "final_model"
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(exist_ok=True, parents=True)
     print("💾 Saving final model/tokenizer…")
     trainer.model.save_pretrained(str(out))
     tok.save_pretrained(str(out))
@@ -235,7 +217,7 @@ def predict_samples(trainer, tok, eval_pairs, render):
         device=0 if torch.cuda.is_available() else -1,
         return_full_text=False,
         pad_token_id=tok.pad_token_id or tok.eos_token_id,
-        # on peut omettre dtype ici; sinon: dtype=torch.bfloat16
+        dtype=torch.bfloat16,
     )
 
     for i, pair in enumerate(eval_pairs[:MAX_PRED], 1):
@@ -249,7 +231,7 @@ def predict_samples(trainer, tok, eval_pairs, render):
         out = gen(prompt, max_new_tokens=500, do_sample=False)
         txt = out[0]["generated_text"].strip()
         (pred_dir / f"{pair['cid']}_pred.txt").write_text(txt, encoding="utf-8")
-        # print(f"✅ Pred {i}/{MAX_PRED} → {pair['cid']}")  # Suppression du print détaillé
+        print(f"✅ Pred {i}/{MAX_PRED} → {pair['cid']}")
 
 def main():
     print(f"🏠 RUN_DIR: {RUN_DIR}")
@@ -271,7 +253,6 @@ def main():
                 "lr": LR,
                 "weight_decay": WEIGHT_DECAY,
                 "warmup_ratio": WARMUP_RATIO,
-                "optim": OPTIM,
                 "sizes": {
                     "total_pairs": len(pairs),
                     "train": len(train_pairs),

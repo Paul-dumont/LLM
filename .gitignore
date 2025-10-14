@@ -7,6 +7,15 @@ Qwen1.5B_full/predictions_500/
 Qwen1.5B_full/model/
 Qwen1.5B_full/logs/
 Qwen1.5B_full/metrics/
+Qwen1.5B_full_V2/predictions/
+Qwen1.5B_full_V2/model/
+Qwen1.5B_full_V2/logs/
+Qwen1.5B_full_V2/metrics/
+Qwen1.5B_full_V3/predictions/
+Qwen1.5B_full_V3/model/
+Qwen1.5B_full_V3/logs/
+Qwen1.5B_full_V3/metrics/
+Qwen1.5B_full_V3/predictions_500/
 SCRIPT/logs/
 
 # Cache et fichiers temporaires

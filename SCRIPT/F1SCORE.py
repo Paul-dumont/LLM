@@ -148,16 +148,16 @@ def evaluate_folders(manual_folder, llm_folder):
 
 if __name__ == "__main__":
     manual_folder = "/nas/longleaf/home/dumontp/LONGLEAF/DATA_TRAINING/Data_output2"
-    llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Qwen1.5B_full/predictions_500"
+    llm_folder = "/nas/longleaf/home/dumontp/LONGLEAF/Qwen1.5B_full_V3/predictions_500"
     
     if not os.path.exists(manual_folder) or not os.path.exists(llm_folder):
         print("Error: Folders not found.")
     else:
         avg_metrics = evaluate_folders(manual_folder, llm_folder)
         
-        os.makedirs("Qwen1.5B_full/metrics", exist_ok=True)
+        os.makedirs("Qwen1.5B_full_V3/metrics", exist_ok=True)
         
-        with open("Qwen1.5B_full/metrics/F1score.json", "w") as f:
+        with open("Qwen1.5B_full_V3/metrics/F1score.json", "w") as f:
             json.dump(avg_metrics, f, indent=4)
         
         print("Metrics saved to Qwen1.5B_full/F1score.json")
@@ -173,11 +173,11 @@ if __name__ == "__main__":
             std_f1 = (sum((x - avg_f1)**2 for x in f1_scores) / len(f1_scores))**0.5
             
             print("\nStatistiques F1")
-            print(f"Average F1: {avg_f1:.4f} (moyenne globale)")
-            print(f"Median F1: {median_f1:.4f} (médiane)")
-            print(f"Min F1: {min_f1:.4f} (minimum, ex: certains champs non extraits)")
-            print(f"Max F1: {max_f1:.4f} (maximum, ex: patient_id parfait)")
-            print(f"Std Dev F1: {std_f1:.4f} (dispersion élevée, certains champs excellents, d'autres nuls)")
+            print(f"Average F1: {avg_f1:.4f} ")
+            print(f"Median F1: {median_f1:.4f} ")
+            print(f"Min F1: {min_f1:.4f} ")
+            print(f"Max F1: {max_f1:.4f}")
+            print(f"Std Dev F1: {std_f1:.4f}")
             
             # All F1 scores sorted by F1 descending
             all_sorted = sorted(avg_metrics.items(), key=lambda x: x[1]['F1'], reverse=True)

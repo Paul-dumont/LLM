@@ -11,7 +11,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 # ==================== CONFIGURATION ====================
 MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
-MODEL_SHORT = "qwen_full"
+MODEL_SHORT = "qwen_full_V3"
 MAX_PREDICTIONS = 500
 
 # ==================== PROMPT SYSTÈME ====================
@@ -33,7 +33,7 @@ if torch.cuda.is_available():
 # ==================== CONFIGURATION DES RÉPERTOIRES ====================
 BASE_DIR = Path(__file__).parent.parent
 DATA_INPUT = BASE_DIR / "DATA_TRAINING" / "Data_input"
-RUNS_DIR = BASE_DIR / "Qwen1.5B_full" / "model"
+RUNS_DIR = BASE_DIR / "Qwen1.5B_full_V3" / "model"
 
 print(f"🏠 BASE_DIR: {BASE_DIR}")
 print(f"📥 DATA_INPUT: {DATA_INPUT}")
@@ -108,7 +108,7 @@ eval_pairs = pairs[:MAX_PREDICTIONS]
 print(f"📊 Will generate predictions for {len(eval_pairs)} notes")
 
 # ==================== GÉNÉRATION DES PRÉDICTIONS ====================
-PREDICT_DIR = Path(__file__).parent.parent / "Qwen1.5B_full" / "predictions_500"
+PREDICT_DIR = Path(__file__).parent.parent / "Qwen1.5B_full_V3" / "predictions_500"
 PREDICT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Nettoyage des prédictions précédentes
